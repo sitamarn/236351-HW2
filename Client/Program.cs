@@ -10,6 +10,15 @@ namespace Client
     {
         static void Main(string[] args)
         {
+            if (args.Length != 1)
+            {
+                Console.WriteLine("Please supply Search server URI");
+                return;
+            }
+
+            ServerProxy app = new ServerProxy(@"http://" + args[0]);
+
+            app.run();
         }
     }
 }
