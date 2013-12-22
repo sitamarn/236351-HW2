@@ -11,6 +11,8 @@ using FlightSearchServer;
 
 namespace Client
 {
+
+
     class ServerProxy
     {
         WebChannelFactory<FlightSearchServer.IClientQueryService>
