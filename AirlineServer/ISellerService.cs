@@ -12,7 +12,7 @@ namespace AirlineServer
     interface ISellerService
     {
         [OperationContract]
-        List<Trip> getTrips(string src, string dst, DateTime date);
+        List<Trip> getTrips(string src, string dst, DateTime date, List<string> sellers);
 
         /// <summary>
         /// A single Flight search query result. this class will be contained within the list
