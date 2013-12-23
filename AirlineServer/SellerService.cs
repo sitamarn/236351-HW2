@@ -13,8 +13,9 @@ namespace AirlineServer
             Dictionary<string, Uri> machines = new Dictionary<string, Uri>();
             foreach (string seller in sellers)
             {
-                machines[seller]
+                //smachines[seller]
             }
+            return null;
             
         }
     }
