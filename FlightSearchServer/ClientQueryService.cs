@@ -10,6 +10,7 @@ namespace FlightSearchServer
     {
         public QueryResultTrips GetFlights(string src, string dst, string date, string servers)
         {
+
             
         }
     }

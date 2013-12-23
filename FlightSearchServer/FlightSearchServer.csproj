@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>8ac907f9-3003-4bcb-b6c7-850954b69ec1</ProjectGuid>
+    <ProjectGuid>{841BF0C2-167E-4C54-9280-011C918DF0CD}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>FlightSearchServer</RootNamespace>
@@ -34,6 +34,9 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.ServiceModel.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -41,6 +44,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AirSellerRegisteration.cs" />
+    <Compile Include="ClientQueryService.cs" />
+    <Compile Include="DataTypes.cs" />
+    <Compile Include="FlightSearchLogic.cs" />
+    <Compile Include="FlightSearchServerException.cs" />
+    <Compile Include="IAirSellerRegisteration.cs" />
+    <Compile Include="IClientQueryService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
