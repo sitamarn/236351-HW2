@@ -8,7 +8,7 @@ using ZooKeeperNet;
 
 namespace FlightSearchServer
 {
-    class IAirlineReplicationModule
+    interface IAirlineReplicationModule
     {
         public interface IZooKeeperEvent : IWatcher
         {
@@ -35,5 +35,11 @@ namespace FlightSearchServer
         /// Call back when a new machine joins the cluster
         /// </summary>
         public void newMachineJoined();
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public Dictionary<string, Uri> getSellersAndPrimaries();
     }
 }
