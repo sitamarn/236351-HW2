@@ -37,9 +37,15 @@ namespace FlightSearchServer
         public void newMachineJoined();
 
         /// <summary>
-        /// 
+        /// Query sellers and their primaries
         /// </summary>
         /// <returns></returns>
         public Dictionary<string, Uri> getSellersAndPrimaries();
+
+        /// <summary>
+        /// Singleton entry point to the airline replication module
+        /// </summary>
+        /// <returns></returns>
+        static public IAirlineReplicationModule getAirlineReplicationModule();
     }
 }
