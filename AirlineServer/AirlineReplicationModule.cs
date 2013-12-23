@@ -35,7 +35,7 @@ namespace AirlineServer
             if (null == zk)
             {
                 zk = new ZooKeeper( address, 
-                    new TimeSpan(0,0,SECONDS_TIMEOUT), new ZooKeeperEvent());
+                    new TimeSpan(0,0,SECONDS_TIMEOUT), new ZooKeeperEvent()); 
             }
 
             checkCluster();
@@ -101,8 +101,20 @@ namespace AirlineServer
         /// </summary>
         public void initNewMachine()
         {
-            // Create my machine node 
-            throw new NotImplementedException();
+            // TODO we need to create a znode of Ephemeral.Sequential
+            try
+            {
+                Stat s = zk.Exists("/" + clusterName + MACHINES_NODE + "/" + , false);
+                if (null == s)
+                {
+                    zk.Create("/" + clusterName, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.Persistent);
+                }
+            }
+            catch (KeeperException e)
+            {
+                Console.WriteLine("Couldn't reach Zookeeper server, " + e.Message);
+                throw e;
+            }            
         }
 
         public void primaryMachineDown()

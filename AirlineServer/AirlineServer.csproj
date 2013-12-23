@@ -43,10 +43,12 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="ZooKeeperNet">
-      <HintPath>..\..\..\..\Downloads\zookeeper-trunk\src\dotnet\ZooKeeperNet\bin\Debug\ZooKeeperNet.dll</HintPath>
+      <HintPath>..\lib\ZooKeeperNet.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AirlineReplicationModule.cs" />
+    <Compile Include="IAirlineReplicationModule.cs" />
     <Compile Include="IReplicatedSeller.cs" />
     <Compile Include="ISellerClusterService.cs" />
     <Compile Include="ISellerService.cs" />
