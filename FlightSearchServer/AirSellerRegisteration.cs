@@ -16,10 +16,10 @@ namespace Registeration
     {
         private void RemoveSellerIfExists(Uri request, string name)
         {
-            if (FlightSearchLogic.Instance.sellers.ContainsKey(name))
+            if (FlightSearchLogic.Instance.delegates.ContainsKey(name))
             {
                 ITicketSellingQueryService tsqs;
-                bool gotValue = FlightSearchLogic.Instance.sellers.TryGetValue(name, out tsqs);
+                bool gotValue = FlightSearchLogic.Instance.delegates.TryGetValue(name, out tsqs);
                 if (gotValue)
                 {
                     IClientChannel currChannel = (IClientChannel)tsqs;
@@ -34,7 +34,7 @@ namespace Registeration
                         Console.WriteLine("Closing of stale channel {0} failed, ignoring", currChannel.RemoteAddress.Uri.ToString());
                     }
                     ITicketSellingQueryService victimChannel;
-                    FlightSearchLogic.Instance.sellers.TryRemove(name, out victimChannel);
+                    FlightSearchLogic.Instance.delegates.TryRemove(name, out victimChannel);
                     Console.WriteLine("Successfully remove old seller {0} by name", name);
                 }
             }

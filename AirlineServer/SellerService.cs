@@ -14,10 +14,10 @@ namespace AirlineServer
         public List<AirlineServer.Trip> getTrips(string src, string dst, DateTime date, List<string> sellers)
         {
             List<string> sellersToSearch;
-            Dictionary<string, Uri> machines = AirlineReplicationModule.getAirlineReplicationModule().getSellersAndPrimaries();
-            List<AirlineServer.Flight> sourceFlights = new List<Flight>();
-            List<AirlineServer.Flight> dstFlights = new List<Flight>();
-            List<AirlineServer.Trip> trips = new List<Trip>();
+            Dictionary<string, Uri> machines = //AirlineReplicationModule.getAirlineReplicationModule().getSellersAndPrimaries();
+            List<Flight> sourceFlights = new List<Flight>();
+            List<Flight> dstFlights = new List<Flight>();
+            List<Trip> trips = new List<Trip>();
             if (sellers.Count == 0) { sellersToSearch = machines.Keys.ToList(); }
             else { sellersToSearch = sellers; }
             foreach (string seller in sellersToSearch)
