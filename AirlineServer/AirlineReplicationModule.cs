@@ -10,8 +10,6 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
 using ZooKeeperNet;
-using FlightSearchServer.IAirlineReplicationModule;
-using FlightSearchServer;
 
 namespace AirlineServer
 {

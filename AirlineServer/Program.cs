@@ -10,14 +10,14 @@ namespace AirlineServer
 {
     class Program
     {
-        static AirlineServer.ISellerService.Seller readSellerFile(string filePath, string sellerName)
+        static AirlineServer.Seller readSellerFile(string filePath, string sellerName)
         {
-            List<AirlineServer.ISellerService.Flight> flights = new List<ISellerService.Flight>();
+            List<AirlineServer.Flight> flights = new List<Flight>();
             StreamReader reader = new StreamReader(filePath);
             string line = reader.ReadLine();
             while (line != null)
             {
-                AirlineServer.ISellerService.Flight flight = new ISellerService.Flight();
+                AirlineServer.Flight flight = new Flight();
                 string[] tokens = line.Split(' ');
                 flight.flightNumber= tokens[0];
                 flight.src= tokens[1];
@@ -26,7 +26,7 @@ namespace AirlineServer
                 flight.price= Convert.ToInt32(tokens[4]);
                 flights.Add(flight);
             }
-            AirlineServer.ISellerService.Seller seller = new ISellerService.Seller();
+            AirlineServer.Seller seller = new Seller();
             seller.name = sellerName;
             seller.flights = flights;
             return seller;
@@ -40,7 +40,7 @@ namespace AirlineServer
                 return;
             }
             string url = null;
-            AirlineServer.ISellerService.Seller seller = null;
+            AirlineServer.Seller seller = null;
             // Check the input:
             try
             {

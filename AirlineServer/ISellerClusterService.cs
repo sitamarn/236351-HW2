@@ -11,12 +11,12 @@ namespace AirlineServer
     interface ISellerClusterService
     {
         [OperationContract]
-        AirlineServer.ISellerService.Seller getSellerClone(string seller);
+        AirlineServer.Seller getSellerClone(string seller);
 
         [OperationContract]
-        List<AirlineServer.ISellerService.Flight> getRelevantFlightsBySrc(string src, DateTime date);
+        List<AirlineServer.Flight> getRelevantFlightsBySrc(string src, DateTime date);
 
         [OperationContract]
-        List<AirlineServer.ISellerService.Flight> getRelevantFlightsByDst(string dst, DateTime date);
+        List<AirlineServer.Flight> getRelevantFlightsByDst(string dst, DateTime date);
     }
 }

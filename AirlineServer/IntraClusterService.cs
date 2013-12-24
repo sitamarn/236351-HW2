@@ -8,19 +8,19 @@ namespace AirlineServer
 {
     class IntraClusterService: ISellerClusterService,IReplicatedSeller
     {
-        List<AirlineServer.ISellerService.Seller> primaries;
-        List<AirlineServer.ISellerService.Seller> backups;
+        List<AirlineServer.Seller> primaries;
+        List<AirlineServer.Seller> backups;
 
-        public IntraClusterService(ISellerService.Seller initialSeller)
+        public IntraClusterService(Seller initialSeller)
         {
-            primaries = new List<ISellerService.Seller>();
+            primaries = new List<Seller>();
             primaries.Add(initialSeller);
-            backups = new List<ISellerService.Seller>();
+            backups = new List<Seller>();
         }
 
         public void setMachineAsPrimary(string sellerName)
         {
-            foreach (AirlineServer.ISellerService.Seller backup in backups)
+            foreach (AirlineServer.Seller backup in backups)
             {
                 if (backup.name.Equals(sellerName))
                 {
@@ -50,17 +50,17 @@ namespace AirlineServer
             throw new NotImplementedException();
         }
 
-        public ISellerService.Seller getSellerClone(string seller)
+        public Seller getSellerClone(string seller)
         {
             throw new NotImplementedException();
         }
 
-        public List<ISellerService.Flight> getRelevantFlightsBySrc(string src, DateTime date)
+        public List<Flight> getRelevantFlightsBySrc(string src, DateTime date)
         {
             throw new NotImplementedException();
         }
 
-        public List<ISellerService.Flight> getRelevantFlightsByDst(string dst, DateTime date)
+        public List<Flight> getRelevantFlightsByDst(string dst, DateTime date)
         {
             throw new NotImplementedException();
         }

@@ -13,7 +13,7 @@ namespace AirlineServer
     {
         [OperationContract]
         List<Trip> getTrips(string src, string dst, DateTime date, List<string> sellers);
-
+    }
         /// <summary>
         /// A single Flight search query result. this class will be contained within the list
         /// QueryResultFlights.
@@ -55,11 +55,9 @@ namespace AirlineServer
         [DataContract]
         public class Seller
         {
-            [CollectionDataContract]
             public List<Flight> flights { get; set; }
-            [DataMember]
             public string name { get; set; }
         }
 
     }
-}
+
