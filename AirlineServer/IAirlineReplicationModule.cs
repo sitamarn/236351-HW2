@@ -10,11 +10,6 @@ namespace FlightSearchServer
 {
     interface IAirlineReplicationModule
     {
-        public interface IZooKeeperEvent : IWatcher
-        {
-            public IZooKeeperEvent(String node);
-        }
-
         /// <summary>
         /// Initialize internal state
         /// </summary>
@@ -22,7 +17,7 @@ namespace FlightSearchServer
         /// <summary>
         /// Init this machine as new
         /// </summary>
-        public void initNewMachine();
+        public void registerMachinesNode();
         /// <summary>
         /// This function is called when a machine drops from the Zookeeper tree
         /// </summary>
@@ -47,5 +42,7 @@ namespace FlightSearchServer
         /// </summary>
         /// <returns></returns>
         static public IAirlineReplicationModule getAirlineReplicationModule();
+
+        
     }
 }
