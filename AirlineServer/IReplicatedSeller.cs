@@ -20,7 +20,7 @@ namespace AirlineServer
         void resetCache(string sellerName);
 
         [OperationContract]
-        void deleteSeller(string sellerName);
+        void dropSeller(string sellerName);
 
         [OperationContract]
         Dictionary<string, int> getSellersAndTheirVersions();

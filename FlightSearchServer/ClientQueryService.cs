@@ -10,7 +10,7 @@ namespace FlightSearchServer
     {
         public QueryResultTrips GetFlights(string src, string dst, string date, string servers)
         {
-
+            return FlightSearchLogic.Instance.QueryTrips(src, dst, date, servers);
             
         }
     }

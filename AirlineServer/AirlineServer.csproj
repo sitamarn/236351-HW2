@@ -49,6 +49,7 @@
   <ItemGroup>
     <Compile Include="AirlineReplicationModule.cs" />
     <Compile Include="IAirlineReplicationModule.cs" />
+    <Compile Include="IntraClusterService.cs" />
     <Compile Include="IReplicatedSeller.cs" />
     <Compile Include="ISellerClusterService.cs" />
     <Compile Include="ISellerService.cs" />

@@ -36,8 +36,8 @@ namespace FlightSearchServer
         /// <summary>
         /// Associate seller names with their resources
         /// </summary>
-        public ConcurrentDictionary<string, IClientQueryService> sellers =
-           new ConcurrentDictionary<string, IClientQueryService>(Environment.ProcessorCount, Environment.ProcessorCount * 2);
+        public ConcurrentDictionary<string, > delegates =
+           new ConcurrentDictionary<string, >(Environment.ProcessorCount, Environment.ProcessorCount * 2);
 
         /// <summary>
         /// Ticket seller registration service.
@@ -103,7 +103,7 @@ namespace FlightSearchServer
         /// <param name="dst">Destination of flight</param>
         /// <param name="date">Date of flight</param>
         /// <returns>Flights from all sellers which match the input criterias</returns>
-        public QueryResultTrips QueryTrips(string src, string dst, string date, string servers)
+        public QueryResultTrips QueryTrips(string src, string dst, string date, string companies)
         {
             Console.WriteLine("FlightSearchServer: " + dst + " " + src + " " + date);
 
@@ -115,19 +115,12 @@ namespace FlightSearchServer
             {
                 throw new FlightSearchServerBadDate();
             }
-            List<string> clusters = new List<string>();
-            foreach( string server in servers.Split(','))
-            {
-                clusters.Add(servers);
-            }
-            if (clusters.Count == 0)
-            {
-                clusters = sellers.Keys.ToList();
-            }
+            List<string> relevantSellers = companies.Split(',').ToList();
 
 
-            foreach (string cluster in clusters)
+            foreach (? delegateMachine in delegates.Values)
             {
+                delegateMachine.getTrips(src,dst,DateTime.Parse(date),relevantSellers);
                 //sellers[cluster].GetFlights(
             }
             QueryResultFlights flights = new QueryResultFlights();

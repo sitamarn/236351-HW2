@@ -13,9 +13,14 @@ namespace AirlineServer
     {
         public List<AirlineServer.ISellerService.Trip> getTrips(string src, string dst, DateTime date, List<string> sellers)
         {
-            Dictionary<string, Uri> machines = new Dictionary<string, Uri>();
+            List<string> sellersToSearch;
+            Dictionary<string, Uri> machines = AirlineReplicationModule.getAirlineReplicationModule().getSellersAndPrimaries();
             List<AirlineServer.ISellerService.Flight> sourceFlights = new List<ISellerService.Flight>();
-            foreach (string seller in sellers)
+            List<AirlineServer.ISellerService.Flight> dstFlights = new List<ISellerService.Flight>();
+            List<AirlineServer.ISellerService.Trip> trips = new List<ISellerService.Trip>();
+            if (sellers.Count == 0) { sellersToSearch = machines.Keys.ToList(); }
+            else { sellersToSearch = sellers; }
+            foreach (string seller in sellersToSearch)
             {
                 try
                 {
@@ -25,12 +30,39 @@ namespace AirlineServer
                     {
                         ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                         sourceFlights.AddRange(sellerCluster.getRelevantFlightsBySrc(src, date));
+                        dstFlights.AddRange(sellerCluster.getRelevantFlightsByDst(dst, date));
+                        dstFlights.AddRange(sellerCluster.getRelevantFlightsByDst(dst, date.AddDays(1)));
                     }
                 }
                 catch (Exception) { }
+                
+                foreach (AirlineServer.ISellerService.Flight srcFlight in sourceFlights)
+                {
+                    if (srcFlight.dst.Equals(dst))
+                    {
+                        ISellerService.Trip trip = new ISellerService.Trip();
+                        trip.firstFlight = srcFlight;
+                        trip.secondFlight = null;
+                        trip.price = srcFlight.price;
+                        trips.Add(trip);
+                        continue;
+                    }
+                    foreach (AirlineServer.ISellerService.Flight dstFlight in dstFlights)
+                    {
+                        if (srcFlight.dst.Equals(dstFlight.src))
+                        {
+                            ISellerService.Trip trip = new ISellerService.Trip();
+                            trip.firstFlight = srcFlight;
+                            trip.secondFlight = dstFlight;
+                            trip.price = srcFlight.price + dstFlight.price;
+                            trips.Add(trip);
+                        }
+                    }
+                }
 
+                trips.Sort();
             }
-            return null;
+            return trips;
 
         }
     }
