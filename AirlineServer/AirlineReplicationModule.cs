@@ -103,10 +103,9 @@ namespace AirlineServer
 
             if (null == zk)
             {
-                //zk = new ZooKeeper( address, 
-                //    new TimeSpan(0,0,SECONDS_TIMEOUT), 
-                //    new ZooKeeperEvent()
-                //    ); 
+                zk = new ZooKeeper(address,
+                    new TimeSpan(0, 0, SECONDS_TIMEOUT),
+                    new ZooKeeperEvent(this)); 
             }
 
             checkCluster(); // Create cluster node if needed
@@ -116,8 +115,17 @@ namespace AirlineServer
             setWatches();
         }
 
+        private string getMachinePath()
+        {
+            return "/" + clusterName + "/" + MACHINES_NODE + "/" + id;
+        }
+
         private void setWatches()
         {
+            try
+            {
+                zk.Exists(getMachinePath(), new ZooKeeperEvent(this));
+            }
             // 1. Watch and check if my data changes
             //machineNodeWatch = new ZooKeeperEvent();
             
