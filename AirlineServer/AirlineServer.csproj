@@ -53,9 +53,11 @@
     <Compile Include="IReplicatedSeller.cs" />
     <Compile Include="ISellerClusterService.cs" />
     <Compile Include="ISellerService.cs" />
+    <Compile Include="ITreeView.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SellerService.cs" />
+    <Compile Include="TreeView.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

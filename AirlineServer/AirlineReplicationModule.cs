@@ -96,6 +96,8 @@ namespace AirlineServer
             public List<String> backsUp = new List<String>();
         }
 
+        static IAirlineReplicationModule getAirlineReplicationModule();
+
         public AirlineReplicationModule(String address, String clusterName, String originalSeller)
         {
             this.clusterName = clusterName;
@@ -126,6 +128,7 @@ namespace AirlineServer
             {
                 zk.Exists(getMachinePath(), new ZooKeeperEvent(this));
             }
+            catch (Exception ex) { }
             // 1. Watch and check if my data changes
             //machineNodeWatch = new ZooKeeperEvent();
             
