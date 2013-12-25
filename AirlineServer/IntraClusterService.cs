@@ -75,7 +75,7 @@ namespace AirlineServer
 
         public Dictionary<string, int> getSellersAndTheirVersions()
         {
-            throw new NotImplementedException();
+            return null;
         }
 
         public Seller getSellerClone(string seller)

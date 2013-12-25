@@ -53,6 +53,7 @@
     <Compile Include="IReplicatedSeller.cs" />
     <Compile Include="ISellerClusterService.cs" />
     <Compile Include="ISellerService.cs" />
+    <Compile Include="LeaderLogic.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SellerService.cs" />
