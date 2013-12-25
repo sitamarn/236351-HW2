@@ -8,6 +8,6 @@ namespace AirlineServer
 {
     public interface ITreeView
     {
-        public Dictionary<string, Uri> Snapshot { get; }
+        Dictionary<string, Uri> Snapshot { get; }
     }
 }

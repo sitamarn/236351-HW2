@@ -96,8 +96,6 @@ namespace AirlineServer
             public List<String> backsUp = new List<String>();
         }
 
-        static IAirlineReplicationModule getAirlineReplicationModule();
-
         public AirlineReplicationModule(String address, String clusterName, String originalSeller)
         {
             this.clusterName = clusterName;

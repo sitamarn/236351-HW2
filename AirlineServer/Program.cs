@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.ServiceModel;
+using System.ServiceModel.Description;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,18 +20,19 @@ namespace AirlineServer
             {
                 AirlineServer.Flight flight = new Flight();
                 string[] tokens = line.Split(' ');
-                flight.flightNumber= tokens[0];
-                flight.src= tokens[1];
-                flight.dst= tokens[2];
-                flight.date= DateTime.Parse(tokens[3]);
-                flight.price= Convert.ToInt32(tokens[4]);
+                flight.flightNumber = tokens[0];
+                flight.src = tokens[1];
+                flight.dst = tokens[2];
+                flight.date = DateTime.Parse(tokens[3]);
+                flight.price = Convert.ToInt32(tokens[4]);
                 flights.Add(flight);
+                line = reader.ReadLine();
             }
             AirlineServer.Seller seller = new Seller();
             seller.name = sellerName;
             seller.flights = flights;
             return seller;
-        }  
+        }
         static void Main(string[] args)
         {
             if (args.Length != 6)
@@ -61,30 +63,56 @@ namespace AirlineServer
             string intraClusterAddress = @"http://localhost:" + args[3] + @"/IntraClusterService";
             string sellerAddress = @"http://localhost:" + args[2] + @"/SellerService";
             //TicketSellingQueryLogic.Instance.Initialize(args[2], args[3]);
-
+            SellerService sa = new SellerService();
+            IntraClusterService ics = new IntraClusterService(seller);
             try
             {
-                using (ServiceHost sellerHost = new ServiceHost(
-                    typeof(SellerService), new Uri(sellerAddress)))
+                using (ServiceHost sellerHost = new ServiceHost(sa, new Uri(sellerAddress)))
                 {
-                    using (ServiceHost intraHost = new ServiceHost(typeof(ISellerClusterService), new Uri(intraClusterAddress)))
+                    using (ServiceHost intraHost = new ServiceHost(ics, new Uri(intraClusterAddress)))
                     {
-                        // Create SOAP client
-                        sellerHost.AddServiceEndpoint(typeof(ISellerService), new BasicHttpBinding(), "ISellerService");
-                        intraHost.AddServiceEndpoint(typeof(ISellerClusterService), new BasicHttpBinding(), "ISellerClusterService");
-                        // Open the service
 
+
+                        ServiceEndpoint sellerEndPoint = sellerHost.AddServiceEndpoint(typeof(ISellerService), new BasicHttpBinding(), sellerAddress);
+                        // add http get support
+                        ServiceMetadataBehavior Ismb = new ServiceMetadataBehavior();
+                        Ismb.HttpGetEnabled = true;
+                        sellerHost.Description.Behaviors.Add(Ismb);
+                        sellerHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode = InstanceContextMode.Single;
+
+                        ServiceEndpoint endPoint = intraHost.AddServiceEndpoint(typeof(ISellerClusterService), new BasicHttpBinding(), intraClusterAddress);
+
+
+
+
+                        // add http get support
+                        ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
+                        smb.HttpGetEnabled = true;
+
+                        intraHost.Description.Behaviors.Add(smb);
+                        intraHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode = InstanceContextMode.Single;
+
+
+
+                        // Create SOAP client
+                        
+                        
+                        // Open the service
                         sellerHost.Open();
                         intraHost.Open();
-                        Console.ReadKey();  
-                    }
+                        
+
+                        Console.ReadKey();
+                   }
                 }
             }
+
             catch (Exception e)
             {
                 Console.WriteLine("Failed executing because:");
                 Console.WriteLine(e.Message);
             }
         }
+    
     }
 }
