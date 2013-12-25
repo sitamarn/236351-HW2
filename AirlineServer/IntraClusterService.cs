@@ -36,7 +36,7 @@ namespace AirlineServer
         {
 
               ServiceEndpoint endPoint = new ServiceEndpoint(
-                        ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(TreeView.Instance.Snapshot[sellerName]));
+                        ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(TreeViewLib.TreeView.Instance.Snapshot[sellerName]));
                     using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                     {
                         ISellerClusterService sellerCluster = httpFactory.CreateChannel();
