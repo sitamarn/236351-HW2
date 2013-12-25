@@ -12,6 +12,8 @@ namespace TreeViewLib
 
         Dictionary<string, ZNodesDataStructures.MachineNode> Machines { get; }
 
+        String Id { get; }
+
         //public static ITreeView Instance { abstract get; }
     }
 }

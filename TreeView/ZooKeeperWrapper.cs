@@ -64,9 +64,41 @@ namespace TreeViewLib
                 {
                     break;
                 }
-
             }
+        }
 
+        public void Delete(String path)
+        {
+            if (Exists(path))
+            {
+                Stat s = GetStat(path);
+                if(s!=null) {
+                    Delete(path, s.Version);
+                }
+            }
+        }
+
+        public void Delete(String path, int version)
+        {
+            int tries = retries;
+            while ((tries--) > 0)
+            {
+                try
+                {
+                    zk.Delete(path, version);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    if (tries == 0)
+                    {
+                        Console.WriteLine("Delete exception after #" + retries + " retries :\n" + ex.Message);
+                        Console.WriteLine("Last retry, throwing exception");
+                        throw ex;
+                    }
+                }
+
+            }           
         }
 
         public List<String> GetChildren(string path, IWatcher watcher)
@@ -89,7 +121,7 @@ namespace TreeViewLib
                 {
                     if (tries == 0)
                     {
-                        Console.WriteLine("GetChildren exception after #" + retries + "retries :\n" + ex.Message);
+                        Console.WriteLine("GetChildren exception after #" + retries + " retries :\n" + ex.Message);
                         Console.WriteLine("Last retry, throwing exception");
                         throw ex;
                     }
@@ -103,7 +135,7 @@ namespace TreeViewLib
         public List<String> GetChildren(string path, Boolean watch)
         {
             checkRep();
-            List<String> lst = null;
+            List<String> lst = new List<String>();
             int tries = retries;
             while ((tries--) > 0)
             {
@@ -112,7 +144,7 @@ namespace TreeViewLib
                     var children = zk.GetChildren(path, watch);
                     if (children != null)
                     {
-                        lst = children.ToList();
+                        lst.AddRange(children.ToList());
                     }
                     break;
                 }
@@ -120,7 +152,7 @@ namespace TreeViewLib
                 {
                     if (tries == 0)
                     {
-                        Console.WriteLine("GetChildren exception after #" + retries + "retries :\n" + ex.Message);
+                        Console.WriteLine("GetChildren exception after #" + retries + " retries :\n" + ex.Message);
                         Console.WriteLine("Last retry, throwing exception");
                         throw ex;
                     }
@@ -147,7 +179,7 @@ namespace TreeViewLib
                 {
                     if (tries == 0)
                     {
-                        Console.WriteLine("GetData exception after #" + retries + "retries :\n" + ex.Message);
+                        Console.WriteLine("GetData exception after #" + retries + " retries :\n" + ex.Message);
                         Console.WriteLine("Last retry, throwing exception");
                         throw ex;
                     }
@@ -172,7 +204,7 @@ namespace TreeViewLib
                 {
                     if (tries == 0)
                     {
-                        Console.WriteLine("GetData exception after #" + retries + "retries :\n" + ex.Message);
+                        Console.WriteLine("GetData exception after #" + retries + " retries :\n" + ex.Message);
                         Console.WriteLine("Last retry, throwing exception");
                         throw ex;
                     }
@@ -197,7 +229,7 @@ namespace TreeViewLib
                 {
                     if (tries == 0)
                     {
-                        Console.WriteLine("SetData exception after #" + retries + "retries :\n" + ex.Message);
+                        Console.WriteLine("SetData exception after #" + retries + " retries :\n" + ex.Message);
                         Console.WriteLine("Last retry, throwing exception");
                         throw ex;
                     }
@@ -220,12 +252,17 @@ namespace TreeViewLib
                 {
                     if (tries == 0)
                     {
-                        Console.WriteLine("Register exception after #" + retries + "retries :\n" + ex.Message);
+                        Console.WriteLine("Register exception after #" + retries + " retries :\n" + ex.Message);
                         Console.WriteLine("Last retry, throwing exception");
                         throw ex;
                     }
                 }
             }
+        }
+
+        public String Create<T>(string path, T data, IEnumerable<Org.Apache.Zookeeper.Data.ACL> acl, CreateMode mode)
+        {
+            return Create(path, ZNodesDataStructures.serialize(data), acl, mode);
         }
 
         public String Create(string path, byte[] data, IEnumerable<Org.Apache.Zookeeper.Data.ACL> acl, CreateMode mode)
@@ -243,7 +280,7 @@ namespace TreeViewLib
                 {
                     if (tries == 0)
                     {
-                        Console.WriteLine("Create exception after #" + retries + "retries :\n" + ex.Message);
+                        Console.WriteLine("Create exception after #" + retries + " retries :\n" + ex.Message);
                         Console.WriteLine("Last retry, throwing exception");
                         throw ex;
                     }
@@ -251,6 +288,31 @@ namespace TreeViewLib
             }
             return name;
         }
+
+        public Stat GetStat(string path)
+        {
+            Stat stat = null;
+            int tries = retries;
+            while ((tries--) > 0)
+            {
+                try
+                {
+                    stat = zk.Exists(path, false);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    if (tries == 0)
+                    {
+                        Console.WriteLine("Exists exception after #" + retries + " retries :\n" + ex.Message);
+                        Console.WriteLine("Last retry, throwing exception");
+                        throw ex;
+                    }
+                }
+            }
+            return stat;
+        }
+
 
         public Boolean Exists(string path)
         {
@@ -271,7 +333,7 @@ namespace TreeViewLib
                 {
                     if (tries == 0)
                     {
-                        Console.WriteLine("Exists exception after #" + retries + "retries :\n" + ex.Message);
+                        Console.WriteLine("Exists exception after #" + retries + " retries :\n" + ex.Message);
                         Console.WriteLine("Last retry, throwing exception");
                         throw ex;
                     }
@@ -289,7 +351,7 @@ namespace TreeViewLib
             }
             if (retries < 1)
             {
-                throw new Exception("Retries should be >= 1");
+                throw new Exception(" retries should be >= 1");
             }
         } 
 

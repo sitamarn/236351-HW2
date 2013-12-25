@@ -15,8 +15,8 @@ namespace TreeViewTest
             TreeViewLib.AirlineReplicationModule second = null;
             try
             {
-               first = new TreeViewLib.AirlineReplicationModule("localhost", "myCluster", "myFirstSeller");
-               second = new TreeViewLib.AirlineReplicationModule("localhost", "myCluster", "mySecondSeller");
+               first = new TreeViewLib.AirlineReplicationModule("localhost", "myCluster", "myFirstSeller", new Uri("http://localhost:123"));
+               //second = new TreeViewLib.AirlineReplicationModule("localhost", "myCluster", "mySecondSeller", new Uri("http://localhost:456"));
             }
             catch (Exception ex)
             {
@@ -24,14 +24,30 @@ namespace TreeViewTest
                 Console.WriteLine(ex.Message);
             }
 
+            Console.WriteLine("Adding Node...");
             ZooKeeperWrapper zk = new ZooKeeperWrapper("localhost", 10000, 5, null);
+            string newId = zk.Create(first.MachinesPath + "/crap", 
+                ZNodesDataStructures.serialize(new ZNodesDataStructures.MachineNode()), 
+                Ids.OPEN_ACL_UNSAFE, 
+                CreateMode.EphemeralSequential
+                );
+            
+            Console.WriteLine("Created ephermal " + newId);
+            Console.WriteLine("Press return to continue");
+            Console.ReadLine();
+
+            Console.WriteLine("Removing Node...");
+            zk.Delete(newId);
+            Console.WriteLine("Node deleted :-(");
+            Console.WriteLine("Press return to continue");
+            Console.ReadLine();
+            
 
             if (zk == null)
             {
                 Console.WriteLine("Connection died too many times :-(, qutting");
                 return;
             }
-
 
             foreach (var child in zk.GetChildren("/",null)) {
                 Console.WriteLine("Root children: " + child);
@@ -46,6 +62,15 @@ namespace TreeViewTest
             {
                 Console.WriteLine(item);
             }
+
+            //Console.WriteLine("Checking tree view: ");
+            //foreach (var machine in second.Tree.Machines)
+            //{
+            //    Console.WriteLine("Name: " + machine.Key + " Uri: " + machine.Value.uri);
+            //}
+
+            Console.WriteLine("Press any key to quit");
+            Console.ReadLine();
         }
     }
 }

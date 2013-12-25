@@ -15,6 +15,7 @@ namespace TreeViewLib
         [Serializable]
         public class MachineNode
         {
+            public Uri uri = null;
             public List<String> primaryOf = new List<String>();
             public List<String> backsUp = new List<String>();
         }
@@ -22,7 +23,12 @@ namespace TreeViewLib
         [Serializable]
         public class SellerNode
         {
+            public enum NodeRole { Backup, Main }
+
             public int version;
+            public Uri uri = null;
+            public String nodeId = null;
+            public NodeRole role = NodeRole.Main;
         }
 
         public static byte[] serialize<T>(T sz)

@@ -46,6 +46,7 @@
     <Compile Include="IAirlineReplicationModule.cs" />
     <Compile Include="ITreeView.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="IReplicationModuleEvents.cs" />
     <Compile Include="TreeView.cs" />
     <Compile Include="ZNodesDataStructures.cs" />
     <Compile Include="ZooKeeperWrapper.cs" />

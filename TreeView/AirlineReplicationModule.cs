@@ -5,9 +5,8 @@ using ZooKeeperNet;
 
 namespace TreeViewLib
 {
-    public class AirlineReplicationModule : IAirlineReplicationModule
+    public class AirlineReplicationModule : IAirlineReplicationModule, IReplicationModuleEvents
     {
-        //static ZooKeeper zk = null;
         private ZooKeeperWrapper zk = null;
 
         public static readonly string MACHINE_PREFIX = "machine_";
@@ -18,11 +17,25 @@ namespace TreeViewLib
 
         private string clusterName;
         private string zookeeperAddress;
+        private string originalSeller;
+        private Uri intraClusterService = null;
 
         private string id = null;
-        TreeViewLib.TreeView treeView = new TreeView();
+
+        public Dictionary<string, ZNodesDataStructures.MachineNode> Machines {
+            get { return getMachines(); }
+        }
+
+        /// <summary>
+        /// Actively queries the zookeeper for this machine's data
+        /// </summary>
+        public ZNodesDataStructures.MachineNode Machine
+        {
+            get { return zk.GetData<ZNodesDataStructures.MachineNode>(id, false); }
+        }
 
         public string SellersPath { get { return "/" + clusterName + "/" + SELLERS_NODE; } }
+        public string OriginalSellerPath { get { return "/" + clusterName + "/" + SELLERS_NODE + "/" + originalSeller; } }
         public string MachinesPath { get { return "/" + clusterName + "/" + MACHINES_NODE; } }
         public string MachinePath { get { return id;  } }
 
@@ -34,24 +47,24 @@ namespace TreeViewLib
                 replicationModule = repMod;
             }
 
-            public void Process(WatchedEvent @event) { }
+            abstract public void Process(WatchedEvent @event);
         }
 
         public class ZooKeeperTreeEvent : AirlineReplicationModuleWatcher
         {
-            public ZooKeeperTreeEvent(AirlineReplicationModule airlineReplicationModule) : base(airlineReplicationModule) {} 
+            public ZooKeeperTreeEvent(AirlineReplicationModule airlineReplicationModule) : base(airlineReplicationModule) {}
 
-            public void Process(WatchedEvent @event)
+            public override void Process(WatchedEvent ev)
             {
-                replicationModule.treeNodeEvent(@event);
-            }            
+                replicationModule.treeNodeEvent(ev);
+            }        
         }
 
         public class MachineDataWatch : AirlineReplicationModuleWatcher
         {
             public MachineDataWatch(AirlineReplicationModule mod) : base(mod) { }
 
-            public void Process(WatchedEvent @event)
+            public override void Process(WatchedEvent @event)
             {
                 replicationModule.machineNodeDataChanged(@event);
             }
@@ -61,7 +74,7 @@ namespace TreeViewLib
         {
             public MachinesNodeWatch(AirlineReplicationModule mod) : base(mod) { }
 
-            public void Process(WatchedEvent @event)
+            public override void Process(WatchedEvent @event)
             {
                 replicationModule.machinesNodeEvent(@event);
             }
@@ -71,41 +84,44 @@ namespace TreeViewLib
         {
             public SellersNodeWatch(AirlineReplicationModule mod) : base(mod) { }
 
-            public void Process(WatchedEvent @event)
+            public override void Process(WatchedEvent @event)
             {
                 replicationModule.sellersNodeEvent(@event);
             }
         }
 
-        public AirlineReplicationModule(String address, String clusterName, String originalSeller)
+        public AirlineReplicationModule(String address, String clusterName, String originalSeller, Uri localService)
         {
             this.clusterName = clusterName;
             this.zookeeperAddress = address;
+            this.originalSeller = originalSeller;
 
             if (null == zk)
             {
                 zk = new ZooKeeperWrapper(address,SECONDS_TIMEOUT, ZK_RETRIES, new ZooKeeperTreeEvent(this));
             }
+            intraClusterService = localService;
 
             constructClusterSubTree(); // Constructs the cluster's subtree if needed
-            registerMachinesNode();
+            registerMachinesNode(); // Add this machine to the Machines subtree
+            registerSellersNode();  // Add the seller which this machine represents to the sellers subtree
 
             setMachinesChildrenWatcher();
             setMachineNodeDataWatcher();
             setSellersChildrenWatcher();
-            // Iterate tree and start building the view
-            buildTreeView();
-
-            // How to deal with leader events ?
         }
 
-
-        /// <summary>
-        /// This function iterates the zookeeper tree and generates a local view of it in the TreeView class
-        /// </summary>
-        private void buildTreeView()
+        private Dictionary<string, ZNodesDataStructures.MachineNode> getMachines()
         {
- 	        //throw new NotImplementedException();
+            Dictionary<string, ZNodesDataStructures.MachineNode> machinesByNames = 
+                new Dictionary<string, ZNodesDataStructures.MachineNode>();
+            List<String> machines = zk.GetChildren(MachinesPath, false);
+            foreach (var machine in machines)
+            {
+                ZNodesDataStructures.MachineNode data = zk.GetData<ZNodesDataStructures.MachineNode>(MachinesPath + "/" + machine, false);
+                machinesByNames.Add(machine, data);
+            }
+            return machinesByNames;
         }
 
         /// <summary>
@@ -223,12 +239,43 @@ namespace TreeViewLib
             try
             {
                 var node = new ZNodesDataStructures.MachineNode();
+                node.uri = intraClusterService;
                 byte[] serializedNode = ZNodesDataStructures.serialize(node);
                 id = zk.Create(MachinesPath + "/" + MACHINE_PREFIX, serializedNode , Ids.OPEN_ACL_UNSAFE, CreateMode.EphemeralSequential);
             }
             catch (KeeperException e)
             {
                 Console.WriteLine("Registering machine node failed\n" + e.Message);
+                throw e;
+            }            
+        }
+
+        public void registerSellersNode()
+        {
+            try
+            {
+                if (!zk.Exists(OriginalSellerPath))
+                {
+                    zk.Create(OriginalSellerPath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.Persistent);
+                }
+
+                var node = new ZNodesDataStructures.SellerNode();
+                node.role = ZNodesDataStructures.SellerNode.NodeRole.Main;
+                node.uri = intraClusterService;
+                node.version = -1; 
+                node.nodeId = id;
+                // All these machines need to be removed from being backups
+                List<String> sellerChildren = zk.GetChildren(OriginalSellerPath, false);
+                if (vRefresh != null)
+                {
+                    //vRefresh(originalSeller, ); //TODO: fix this shit
+                }
+                zk.Create(OriginalSellerPath + "/" + MACHINE_PREFIX, node, Ids.OPEN_ACL_UNSAFE, CreateMode.PersistentSequential);
+            }
+
+            catch (KeeperException e)
+            {
+                Console.WriteLine("Registering Seller node failed\n" + e.Message);
                 throw e;
             }            
         }
@@ -249,12 +296,11 @@ namespace TreeViewLib
         {
             Console.WriteLine("machinesNodeEvent event: " + @event.Type + " on " + @event.Path);
             string[] path = @event.Path.Split('/');
-            if ((path.Length >= 2) && (path[0].Equals(clusterName) && (path[1].Equals(MACHINES_NODE))))
+            if ((path.Length >= 3) && (path[1].Equals(clusterName) && (path[2].Equals(MACHINES_NODE))))
             {
                 switch (@event.Type)
                 {
                     case EventType.NodeCreated:  // New child created, get it's data and put it inside my TreeView
-                        //zk.GetChildren(
                         break;
                     case EventType.NodeDeleted:
                         // Check if its the MACHINES_NODE, if it is, throw an exception, otherwise update the tree
@@ -283,7 +329,7 @@ namespace TreeViewLib
                 {
                     string machineNode = path[2];
                     var data = zk.GetData<ZNodesDataStructures.MachineNode>(@event.Path, false);
-                    treeView.setMachineData(machineNode, data);
+                    //treeView.setMachineData(machineNode, data);
                     
                 }
                 else
@@ -303,5 +349,25 @@ namespace TreeViewLib
         }
 
 
+        private VersionRefresh vRefresh = null;
+        public VersionRefresh VersionRefreshHandler
+        {
+            set { vRefresh = value; }
+        }
+
+        private MachineJoined mJoined = null;
+        public MachineJoined MachineJoinedHandler
+        {
+            set { mJoined = value; }
+        }
+
+        private MachineDropped mDropped = null;
+        public MachineDropped MachineDroppedHandler
+        {
+            set { mDropped = value; }
+        }
     }
 }
+
+
+

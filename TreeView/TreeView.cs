@@ -17,11 +17,18 @@ namespace TreeViewLib
             }
         }
 
+        private String machineId = null;
+        public String Id
+        {
+            get { return machineId; }
+        }
+
+
         private Dictionary<string, Uri> snapshot = new Dictionary<string, Uri>();
         Dictionary<string, ZNodesDataStructures.MachineNode> machines = new Dictionary<string, ZNodesDataStructures.MachineNode>();
 
         public delegate void machineDataChangeDelegate(ITreeView tree, string machineId, ZNodesDataStructures.MachineNode oldData);
-        public  machineDataChangeDelegate machineDataChange;
+        private machineDataChangeDelegate machineDataChange;
 
         // Sets the handler for machine data change (any machine)
         public machineDataChangeDelegate MachineDataChange { set { machineDataChange = value; } }
@@ -49,7 +56,20 @@ namespace TreeViewLib
                 oldData = machines[machineId];
             }
             machines.Add(machineId, data);
-            machineDataChange((ITreeView)this, machineId, oldData);
+            if (machineDataChange != null)
+            {
+                machineDataChange((ITreeView)this, machineId, oldData);
+            }
+        }
+
+        public void setSnapshot(string sellerName, Uri primaryMachine)
+        {
+            snapshot.Add(sellerName, primaryMachine);
+        }
+
+        public void setId(string myId)
+        {
+            machineId = myId;
         }
     }
 }
