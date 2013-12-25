@@ -4,10 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AirlineServer
+namespace TreeViewLib
 {
     public interface ITreeView
     {
         Dictionary<string, Uri> Snapshot { get; }
+
+        Dictionary<string, ZNodesDataStructures.MachineNode> Machines { get; }
+
+        //public static ITreeView Instance { abstract get; }
     }
 }

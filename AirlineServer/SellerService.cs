@@ -14,9 +14,7 @@ namespace AirlineServer
         public List<AirlineServer.Trip> getTrips(string src, string dst, DateTime date, List<string> sellers)
         {
             List<string> sellersToSearch;
-            //Dictionary<string, Uri> machines = TreeView.Instance.Snapshot;
-            Dictionary<string, Uri> machines = new Dictionary<string, Uri>();
-            machines.Add("KLM", new Uri("http://localhost:8201/IntraClusterService"));
+            Dictionary<string, Uri> machines = TreeViewLib.Instance.Snapshot;
             List<Flight> sourceFlights = new List<Flight>();
             List<Flight> dstFlights = new List<Flight>();
             List<Trip> trips = new List<Trip>();
@@ -24,17 +22,19 @@ namespace AirlineServer
             else { sellersToSearch = sellers; }
             foreach (string seller in sellersToSearch)
             {
-                ServiceEndpoint endPoint = new ServiceEndpoint(
-                        ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(machines[seller]));
-                using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                try
                 {
-                    ISellerClusterService sellerCluster = httpFactory.CreateChannel();
-
-                    //ISellerClusterService sellerCluster = httpFactory.CreateChannel();
-                    sourceFlights.AddRange(sellerCluster.getRelevantFlightsBySrc(src, date));
-                    dstFlights.AddRange(sellerCluster.getRelevantFlightsByDst(dst, date));
-                    dstFlights.AddRange(sellerCluster.getRelevantFlightsByDst(dst, date.AddDays(1)));
+                    ServiceEndpoint endPoint = new ServiceEndpoint(
+                        ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(machines[seller]));
+                    using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                    {
+                        ISellerClusterService sellerCluster = httpFactory.CreateChannel();
+                        sourceFlights.AddRange(sellerCluster.getRelevantFlightsBySrc(src, date));
+                        dstFlights.AddRange(sellerCluster.getRelevantFlightsByDst(dst, date));
+                        dstFlights.AddRange(sellerCluster.getRelevantFlightsByDst(dst, date.AddDays(1)));
+                    }
                 }
+                catch (Exception) { }
                 
                 foreach (AirlineServer.Flight srcFlight in sourceFlights)
                 {
