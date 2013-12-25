@@ -21,5 +21,6 @@ namespace AirlineServer
         private Dictionary<string, Uri> snapshot = new Dictionary<string, Uri>();
 
         public Dictionary<string, Uri> Snapshot { get { return snapshot; } }
+
     }
 }

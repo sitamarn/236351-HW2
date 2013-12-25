@@ -25,9 +25,8 @@ namespace AirlineServer
 
         private string id = null;
 
-        private ZooKeeperEvent machineNodeWatch = null;
 
-        public class ZooKeeperEvent : IWatcher
+        public class ZooKeeperMachineNodeEvent : IWatcher
         {
             AirlineReplicationModule replicationModule = null;
 
@@ -36,7 +35,22 @@ namespace AirlineServer
                 replicationModule.handleMachineNodeEvent(@event);
             }
 
-            public ZooKeeperEvent(AirlineReplicationModule repMod)
+            public ZooKeeperMachineNodeEvent(AirlineReplicationModule repMod)
+            {
+                replicationModule = repMod;
+            }
+        }
+
+        public class ZooKeeperTreeEvent : IWatcher
+        {
+            AirlineReplicationModule replicationModule = null;
+
+            public void Process(WatchedEvent @event)
+            {
+                replicationModule.handleTreeEvent(@event);
+            }
+
+            public ZooKeeperTreeEvent(AirlineReplicationModule repMod)
             {
                 replicationModule = repMod;
             }
@@ -105,7 +119,7 @@ namespace AirlineServer
             {
                 zk = new ZooKeeper(address,
                     new TimeSpan(0, 0, SECONDS_TIMEOUT),
-                    new ZooKeeperEvent(this)); 
+                    new ZooKeeperTreeEvent(this)); 
             }
 
             checkCluster(); // Create cluster node if needed
@@ -124,13 +138,12 @@ namespace AirlineServer
         {
             try
             {
-                zk.Exists(getMachinePath(), new ZooKeeperEvent(this));
+                zk.Exists(getMachinePath(), new ZooKeeperMachineNodeEvent(this));
             }
-            catch (Exception ex) { }
-            // 1. Watch and check if my data changes
-            //machineNodeWatch = new ZooKeeperEvent();
-            
-            //zk.
+            catch (Exception ex) 
+            {
+                Console.WriteLine("Failed creating watched on " + getMachinePath() + " because: " + ex.Message);
+            }
         }
 
         private void checkMachinesNode()
@@ -244,12 +257,23 @@ namespace AirlineServer
         }
 
         /// <summary>
-        /// Handles 
+        /// Handles changes on my node (data changes)
         /// </summary>
         /// <param name="event"></param>
-        private void handleMachineNodeEvent(WatchedEvent @event)
+        internal void handleMachineNodeEvent(WatchedEvent @event)
         {
-            //if(@event==
+            Console.WriteLine("Handle Tree event " + @event.Type + " fired on " + @event.Path);
+            zk.Register(new ZooKeeperTreeEvent(this));
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="event"></param>
+        internal void handleTreeEvent(WatchedEvent @event)
+        {
+            Console.WriteLine("Handle Tree event "+@event.Type +" fired on " + @event.Path);
+            zk.Register(new ZooKeeperTreeEvent(this));
         }
     }
 }
