@@ -36,7 +36,7 @@ namespace AirlineServer
         }
 
         [DataContract]
-        public class Trip : IComparable
+        public class Trip
         {
             [DataMember]
             public int price { get; set; }
@@ -44,14 +44,6 @@ namespace AirlineServer
             public Flight firstFlight { get; set; }
             [DataMember]
             public Flight secondFlight { get; set; }
-
-            public int CompareTo(object obj)
-            {
-                Trip otherTrip = (Trip)obj;
-
-                if (price < otherTrip.price) { return -1; }
-                else { return 1; }
-            }
         }
 
         [DataContract]
@@ -61,6 +53,8 @@ namespace AirlineServer
             public List<Flight> flights { get; set; }
             [DataMember]
             public string name { get; set; }
+            [DataMember]
+            public int version { get; set; }
         }
 
     }
