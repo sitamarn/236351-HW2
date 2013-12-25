@@ -12,13 +12,13 @@ using FlightSearchServer;
 
 namespace Registeration
 {
-    public class AirSellerRegisteration : ITicketSellerRegisteration
+    public class AirSellerRegisteration : IAirSellerRegisteration
     {
         private void RemoveSellerIfExists(Uri request, string name)
         {
             if (FlightSearchLogic.Instance.delegates.ContainsKey(name))
             {
-                ITicketSellingQueryService tsqs;
+                ISellerService tsqs;
                 bool gotValue = FlightSearchLogic.Instance.delegates.TryGetValue(name, out tsqs);
                 if (gotValue)
                 {
@@ -33,14 +33,14 @@ namespace Registeration
                         currChannel.Abort();
                         Console.WriteLine("Closing of stale channel {0} failed, ignoring", currChannel.RemoteAddress.Uri.ToString());
                     }
-                    ITicketSellingQueryService victimChannel;
+                    ISellerService victimChannel;
                     FlightSearchLogic.Instance.delegates.TryRemove(name, out victimChannel);
                     Console.WriteLine("Successfully remove old seller {0} by name", name);
                 }
             }
 
 
-            foreach (var seller in FlightSearchLogic.Instance.sellers)
+            foreach (var seller in FlightSearchLogic.Instance.delegates)
             {
                 IClientChannel currChannel = ((IClientChannel)seller.Value);
 
@@ -58,8 +58,8 @@ namespace Registeration
                         currChannel.Abort();
                         Console.WriteLine("Closing of stale channel {0} failed, ignoring", currChannel.RemoteAddress.Uri.ToString());
                     }
-                    ITicketSellingQueryService victimChannel;
-                    FlightSearchLogic.Instance.sellers.TryRemove(seller.Key, out victimChannel);
+                    ISellerService victimChannel;
+                    FlightSearchLogic.Instance.delegates.TryRemove(seller.Key, out victimChannel);
                 }
             }
 
@@ -70,11 +70,11 @@ namespace Registeration
         {
             RemoveSellerIfExists(request, name);
 
-            //SVCUTIL::
-            //ChannelFactory<ITicketSellingQueryService> httpFactory = new ChannelFactory<ITicketSellingQueryService>(new ServiceEndpoint(ContractDescription.GetContract(typeof(ITicketSellingQueryService)), new BasicHttpBinding(), new EndpointAddress(request)));
+
+            ChannelFactory<ISellerService> httpFactory = new ChannelFactory<ISellerService>(new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerService)), new BasicHttpBinding(), new EndpointAddress(request)));
             // create channel proxy for endpoint
-            //ITicketSellingQueryService channel = httpFactory.CreateChannel();
-            //FlightSearchLogic.Instance.sellers[name] = channel;
+            ISellerService channel = httpFactory.CreateChannel();
+            FlightSearchLogic.Instance.delegates[name] = channel;
             Console.WriteLine("seller {0} from {1} registered successfully", name, request.ToString());
 
         }

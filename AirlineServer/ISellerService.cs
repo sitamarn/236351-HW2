@@ -31,6 +31,8 @@ namespace AirlineServer
             public string dst { get; set; }
             [DataMember]
             public DateTime date { get; set; }
+            [DataMember]
+            public string seller { get; set; }
         }
 
         [DataContract]
@@ -55,7 +57,9 @@ namespace AirlineServer
         [DataContract]
         public class Seller
         {
+            [DataMember]
             public List<Flight> flights { get; set; }
+            [DataMember]
             public string name { get; set; }
         }
 

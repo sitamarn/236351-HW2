@@ -4,8 +4,11 @@ using System.IO;
 using System.Linq;
 using System.ServiceModel;
 using System.ServiceModel.Description;
+using System.ServiceModel.Web;
 using System.Text;
 using System.Threading.Tasks;
+using Registeration;
+using System.Net;
 
 namespace AirlineServer
 {
@@ -23,11 +26,13 @@ namespace AirlineServer
                 flight.flightNumber = tokens[0];
                 flight.src = tokens[1];
                 flight.dst = tokens[2];
+                flight.seller = sellerName;
                 flight.date = DateTime.Parse(tokens[3]);
                 flight.price = Convert.ToInt32(tokens[4]);
                 flights.Add(flight);
                 line = reader.ReadLine();
             }
+            reader.Close();
             AirlineServer.Seller seller = new Seller();
             seller.name = sellerName;
             seller.flights = flights;
@@ -100,8 +105,36 @@ namespace AirlineServer
                         // Open the service
                         sellerHost.Open();
                         intraHost.Open();
-                        
 
+                        try
+                        {
+                            WebChannelFactory<IAirSellerRegisteration> cf = new WebChannelFactory<IAirSellerRegisteration>(new Uri(url));
+                            IAirSellerRegisteration registerChannel = cf.CreateChannel();
+                            // Register the channel in the server
+                            registerChannel.RegisterSeller(new Uri(sellerAddress), args[1]);
+                            
+                        }
+                        catch (ProtocolException e)
+                        {
+                            Console.WriteLine("Bad Protocol: " + e.Message);
+                        }
+                        catch (Exception e)
+                        {
+
+                            if (e.InnerException is WebException)
+                            {
+                                HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
+                                Console.WriteLine("Failed, {0}", resp.StatusDescription);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Advertisement connection kicked the bucket, quitting because:");
+                                Console.WriteLine(e.Message.ToString());
+                            }
+                            return;
+                        }
+
+                        // Keeping the service alive till pressing ENTER
                         Console.ReadKey();
                    }
                 }

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.ServiceModel;
+using System.ServiceModel.Description;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -32,7 +34,17 @@ namespace AirlineServer
 
         public void setMachineAsBackup(string sellerName)
         {
-            throw new NotImplementedException();
+
+              ServiceEndpoint endPoint = new ServiceEndpoint(
+                        ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(TreeView.Instance.Snapshot[sellerName]));
+                    using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                    {
+                        ISellerClusterService sellerCluster = httpFactory.CreateChannel();
+                        Seller sellerToBackup = sellerCluster.getSellerClone(sellerName);
+
+                        backups.Add(sellerToBackup);
+                    }
+
         }
 
         public void resetCache(string sellerName)
@@ -42,7 +54,23 @@ namespace AirlineServer
 
         public void dropSeller(string sellerName)
         {
-            throw new NotImplementedException();
+            foreach (Seller primary in primaries)
+            {
+                if (primary.name.Equals(sellerName))
+                {
+                    primaries.Remove(primary);
+                    return;
+                }
+            }
+
+            foreach (Seller backup in backups)
+            {
+                if (backup.name.Equals(sellerName))
+                {
+                    backups.Remove(backup);
+                    return;
+                }
+            }
         }
 
         public Dictionary<string, int> getSellersAndTheirVersions()
@@ -52,18 +80,49 @@ namespace AirlineServer
 
         public Seller getSellerClone(string seller)
         {
-            throw new NotImplementedException();
+            foreach (Seller primary in primaries)
+            {
+                if (primary.name.Equals(seller))
+                {
+                    Seller sellerClone = new Seller();
+                    sellerClone.name = primary.name;
+                    sellerClone.flights = new List<Flight>(primary.flights);
+                    return sellerClone;
+                }
+            }
+            return null;
         }
 
         public List<Flight> getRelevantFlightsBySrc(string src, DateTime date)
         {
-
-            throw new NotImplementedException();
+            List<Flight> relevantFlights = new List<Flight>();
+            foreach (Seller airline in primaries)
+            {
+                foreach (Flight flight in airline.flights)
+                {
+                    if (flight.src.Equals(src) && flight.date.Equals(date))
+                    {
+                        relevantFlights.Add(flight);
+                    }
+                }
+            }
+            return relevantFlights;
         }
 
         public List<Flight> getRelevantFlightsByDst(string dst, DateTime date)
         {
-            throw new NotImplementedException();
+            List<Flight> relevantFlights = new List<Flight>();
+            foreach (Seller airline in primaries)
+            {
+                foreach (Flight flight in airline.flights)
+                {
+                    if (flight.dst.Equals(dst) && flight.date.Equals(date))
+                    {
+                        relevantFlights.Add(flight);
+                    }
+                }
+            }
+            return relevantFlights;
         }
     }
 }

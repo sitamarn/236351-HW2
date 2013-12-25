@@ -1,4 +1,5 @@
-﻿using Registeration;
+﻿using AirlineServer;
+using Registeration;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -36,8 +37,8 @@ namespace FlightSearchServer
         /// <summary>
         /// Associate seller names with their resources
         /// </summary>
-        public ConcurrentDictionary<string, > delegates =
-           new ConcurrentDictionary<string, >(Environment.ProcessorCount, Environment.ProcessorCount * 2);
+        public ConcurrentDictionary<string, ISellerService> delegates =
+           new ConcurrentDictionary<string, ISellerService>(Environment.ProcessorCount, Environment.ProcessorCount * 2);
 
         /// <summary>
         /// Ticket seller registration service.
@@ -106,60 +107,51 @@ namespace FlightSearchServer
         public QueryResultTrips QueryTrips(string src, string dst, string date, string companies)
         {
             Console.WriteLine("FlightSearchServer: " + dst + " " + src + " " + date);
-
+            DateTime dateOfFlight;
             try // Sanitize date
             {
-                DateTime.ParseExact(date, "dd/MM/yyyy", CultureInfo.InvariantCulture);
+                dateOfFlight = DateTime.ParseExact(date, "dd/MM/yyyy", CultureInfo.InvariantCulture);
             }
             catch (Exception)
             {
                 throw new FlightSearchServerBadDate();
             }
-            List<string> relevantSellers = companies.Split(',').ToList();
 
+            QueryResultTrips queryTrips = new QueryResultTrips();
 
-            foreach (? delegateMachine in delegates.Values)
+            foreach (ISellerService delegateMachine in delegates.Values)
             {
-                delegateMachine.getTrips(src,dst,DateTime.Parse(date),relevantSellers);
-                //sellers[cluster].GetFlights(
-            }
-            QueryResultFlights flights = new QueryResultFlights();
-            foreach (var seller in sellers.Keys)
-            {
-                FlightQuery fq = new FlightQuery();
-                fq.src = src;
-                fq.dst = dst;
-                fq.date = DateTime.Parse(date);
-                using (new OperationContextScope((IContextChannel)sellers[seller]))
+                Trip[] trips = delegateMachine.getTrips(src, dst, dateOfFlight, companies.Split(','));
+                foreach (Trip trip in trips)
                 {
-                    try
+                    QueryResultTrip queryTrip = new QueryResultTrip();
+                    queryTrip.firstFlight.src = trip.firstFlight.src;
+                    queryTrip.firstFlight.dst = trip.firstFlight.dst;
+                    queryTrip.firstFlight.date = trip.firstFlight.date;
+                    queryTrip.firstFlight.seller = trip.firstFlight.seller;
+                    queryTrip.firstFlight.flightNumber = trip.firstFlight.flightNumber;
+                    if (trip.secondFlight != null)
                     {
-                        Flights sellerFlights =
-                            sellers[seller].GetFlights(fq); // DEAL WITH EXCEPTIONS HERE
+                        queryTrip.secondFlight.src = trip.secondFlight.src;
+                        queryTrip.secondFlight.dst = trip.secondFlight.dst;
+                        queryTrip.secondFlight.date = trip.secondFlight.date;
+                        queryTrip.secondFlight.flightNumber = trip.secondFlight.flightNumber;
+                        queryTrip.secondFlight.seller = trip.secondFlight.seller;
+                    }
+                    else
+                    {
+                        queryTrip.secondFlight = null;
+                    }
 
-                        foreach (var sellerFlight in sellerFlights)
-                        {
-                            QueryResultFlight f1 = (QueryResultFlight)sellerFlight;
-                            f1.name = seller;
-                            flights.Add(f1);
-                        }
-                    }
-                    catch (FaultException e)
-                    {
-                        Console.WriteLine("Seller {0} failed with {1}, ignoring.", seller, e.Reason.ToString());
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Seller {0} {1} malfunction: \n{2}", seller, "search", e.Message.ToString());
-                        ITicketSellingQueryService victim;
-                        sellers.TryRemove(seller, out victim);
-                    }
+                    queryTrip.price = trip.price;
+
+                    queryTrips.Add(queryTrip);
                 }
             }
 
-            flights.Sort();
+            queryTrips.Sort();
 
-            return flights;
+            return queryTrips;
         }
 
 

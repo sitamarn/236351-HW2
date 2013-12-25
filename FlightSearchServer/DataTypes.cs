@@ -71,18 +71,16 @@ namespace FlightSearchServer
     /// QueryResultFlights.
     /// </summary>
     [DataContract]
-    public class QueryResultFlight : IComparable
+    public class QueryResultFlight
     {
         [DataMember]
-        public string price { get; set; }
+        public string seller { get; set; }
         [DataMember]
         public string flightNumber { get; set; }
         [DataMember]
         public string src { get; set; }
         [DataMember]
         public string dst { get; set; }
-        [DataMember]
-        public string seller { get; set; }
         [DataMember]
         public DateTime date { get; set; }
     }
