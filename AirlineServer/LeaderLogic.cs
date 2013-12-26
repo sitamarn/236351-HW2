@@ -108,7 +108,7 @@ namespace AirlineServer
 
         private bool checkIfLeader()
         {
-            string minMachine = TreeViewLib.TreeView.Instance.Machines.Keys.Min();
+            string minMachine = TreeViewLib.TreeView.Machines.Machines.Keys.Min();
             //string myID = TreeViewLib.TreeView.Instance.myID;
             //return myID.Equals(minMachine);
             return true;

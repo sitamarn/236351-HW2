@@ -10,6 +10,7 @@ namespace TreeViewLib
 {
     public class ZooKeeperWrapper
     {
+        private Boolean isDisposed = true;
         private Boolean verbose = false;
         private readonly int retries;
         private readonly int timeout;
@@ -28,13 +29,14 @@ namespace TreeViewLib
             Connect();
         }
 
-        private void Connect()
+        public void Disconnect()
         {
             if (zk != null)
             {
                 try
                 {
                     zk.Dispose();
+                    isDisposed = true;
                 }
                 catch (Exception ex)
                 {
@@ -43,12 +45,18 @@ namespace TreeViewLib
                 }
                 zk = null;
             }
+        }
+
+        public void Connect()
+        {
+            Disconnect();
             int tries = retries;
             while ((tries--) > 0)
             {
                 try
                 {
                     zk = new ZooKeeper(zookeeperAddress, new TimeSpan(0, 0, timeout), treeWatcher);
+                    isDisposed = false;
                     break;
                 }
                 catch (Exception ex)
@@ -103,6 +111,7 @@ namespace TreeViewLib
 
         public List<String> GetChildren(string path, IWatcher watcher)
         {
+            if (isDisposed) return null;
             checkRep();
             List<String> lst = null;
             int tries = retries;
@@ -134,6 +143,7 @@ namespace TreeViewLib
 
         public List<String> GetChildren(string path, Boolean watch)
         {
+            if (isDisposed) return null;
             checkRep();
             List<String> lst = new List<String>();
             int tries = retries;
@@ -166,6 +176,7 @@ namespace TreeViewLib
         public T GetData<T>(string nodePath, IWatcher watcher) where T : new()
         {
             T data = default(T);
+            if (isDisposed) return data;
             int tries = retries;
             while ((tries--) > 0)
             {

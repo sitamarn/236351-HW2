@@ -1,6 +1,7 @@
 ﻿using Org.Apache.Zookeeper.Data;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using ZooKeeperNet;
 
 namespace TreeViewLib
@@ -19,6 +20,7 @@ namespace TreeViewLib
         private string zookeeperAddress;
         private string originalSeller;
         private Uri intraClusterService = null;
+        private TreeView tree = null;
 
         private string id = null;
 
@@ -60,13 +62,13 @@ namespace TreeViewLib
             }        
         }
 
-        public class MachineDataWatch : AirlineReplicationModuleWatcher
+        public class MachineNodeWatch : AirlineReplicationModuleWatcher
         {
-            public MachineDataWatch(AirlineReplicationModule mod) : base(mod) { }
+            public MachineNodeWatch(AirlineReplicationModule mod) : base(mod) { }
 
             public override void Process(WatchedEvent @event)
             {
-                replicationModule.machineNodeDataChanged(@event);
+                replicationModule.machineNodeChanged(@event);
             }
         }
 
@@ -107,8 +109,10 @@ namespace TreeViewLib
             registerSellersNode();  // Add the seller which this machine represents to the sellers subtree
 
             setMachinesChildrenWatcher();
-            setMachineNodeDataWatcher();
             setSellersChildrenWatcher();
+
+            tree = new TreeView(zk, MachinesPath, SellersPath);
+            tree.refresh();
         }
 
         private Dictionary<string, ZNodesDataStructures.MachineNode> getMachines()
@@ -140,26 +144,19 @@ namespace TreeViewLib
         }
 
         /// <summary>
-        /// Sets a watcher on the machine's ephemeral node, this will call the ..... function
+        /// Set machines subtree events. this will register the following events:
+        /// 1. a new machine node joins the subtree - fires MachinesNodeWatch 
+        /// 2. an existing machine got message or died - fires MachineNodeWatch
         /// </summary>
-        private void setMachineNodeDataWatcher()
-        {
-            try
-            {
-                zk.GetData<ZNodesDataStructures.MachineNode>(MachinePath, new MachineDataWatch(this));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Failed setting Machine data Node watch due to " + ex.Message);
-                throw ex;
-            }           
-        }
-
         private void setMachinesChildrenWatcher()
         {
             try
             {
-                zk.GetChildren(MachinesPath, new MachinesNodeWatch(this));
+                List<String> machines = zk.GetChildren(MachinesPath, new MachinesNodeWatch(this)); // Watch for new nodes
+                foreach(var machine in machines) {
+                    String path = MachinesPath + "/" + machine;
+                    zk.GetData<ZNodesDataStructures.MachineNode>(path, new MachineNodeWatch(this));
+                }
             }
             catch (Exception ex)
             {
@@ -240,6 +237,8 @@ namespace TreeViewLib
             {
                 var node = new ZNodesDataStructures.MachineNode();
                 node.uri = intraClusterService;
+                node.originalSellerName = originalSeller;
+                node.primaryOf.Add(originalSeller);
                 byte[] serializedNode = ZNodesDataStructures.serialize(node);
                 id = zk.Create(MachinesPath + "/" + MACHINE_PREFIX, serializedNode , Ids.OPEN_ACL_UNSAFE, CreateMode.EphemeralSequential);
             }
@@ -295,16 +294,30 @@ namespace TreeViewLib
         internal void machinesNodeEvent(WatchedEvent @event)
         {
             Console.WriteLine("machinesNodeEvent event: " + @event.Type + " on " + @event.Path);
+            Console.WriteLine("Event fired on "+ id);
             string[] path = @event.Path.Split('/');
             if ((path.Length >= 3) && (path[1].Equals(clusterName) && (path[2].Equals(MACHINES_NODE))))
             {
-                switch (@event.Type)
+                if (@event.Type == EventType.NodeChildrenChanged)
                 {
-                    case EventType.NodeCreated:  // New child created, get it's data and put it inside my TreeView
-                        break;
-                    case EventType.NodeDeleted:
-                        // Check if its the MACHINES_NODE, if it is, throw an exception, otherwise update the tree
-                        break;
+                    TreeView.ChildrenDiff cd = tree.update(); // Get diff
+                    foreach (var newNode in cd.added) // Add new watches to new nodes
+                    {
+                        zk.GetData<ZNodesDataStructures.MachineNode>(MachinesPath + "/" + newNode, new MachineNodeWatch(this));
+                    }
+                    // Callback function 
+                    if (mJoined != null)
+                    {
+                        foreach (var newNode in cd.added)
+                        {
+                            var machineData = tree.getLocalMachineData(newNode);
+                            mJoined(machineData.originalSellerName, machineData.uri);
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Unexpected event " + @event.Type + " on " + @event.Path + ", Ignoring...");
                 }
             }
             else
@@ -313,33 +326,40 @@ namespace TreeViewLib
             }
 
 
-            setMachinesChildrenWatcher();
+            zk.GetChildren(MachinesPath, new MachinesNodeWatch(this)); // Refresh watcher on Machines node
         }
 
-        internal void machineNodeDataChanged(WatchedEvent @event)
+        internal void machineNodeChanged(WatchedEvent @event)
         {
             Console.WriteLine("machineNodeDataChanged event: " + @event.Type + " on " + @event.Path);
+            Console.WriteLine("Event fired on " + id);
             if (@event.Type == EventType.NodeDataChanged)
             {
-                // 1. Get path node
-                // 2. Update the data on the treeView
-                string[] path = @event.Path.Split('/');
-                // Check if its our cluster / MACHINES_NODE / <someID>
-                if ((path.Length == 3) && path[0].Equals(clusterName) && path[1].Equals(MACHINES_NODE) && @event.Path.Equals(id))
+                if (@event.Path == id)
                 {
-                    string machineNode = path[2];
-                    var data = zk.GetData<ZNodesDataStructures.MachineNode>(@event.Path, false);
-                    //treeView.setMachineData(machineNode, data);
-                    
+                    // TODO: put an event here
                 }
-                else
-                {
-                    Console.WriteLine("Path " + @event.Path + " is not mine ["+id+"], ignoring event");
-                }
-                
-                
             }
-            setMachineNodeDataWatcher();
+
+            if (@event.Type != EventType.NodeDeleted)
+            {
+                zk.GetData<ZNodesDataStructures.MachineNode>(@event.Path, new MachineNodeWatch(this));
+            }
+            else
+            {
+                if (@event.Type == EventType.NodeDeleted)
+                {
+                    // 1. Remove this node from tree view
+                    // 2. Call the callback method to the leader
+                    String machineName = @event.Path.Substring(@event.Path.LastIndexOf('/')+1);
+                    ZNodesDataStructures.MachineNode machineData = tree.Machines[machineName];
+                    tree.removeMachine(machineName);
+                    if (mDropped != null)
+                    {
+                        mDropped(machineData.primaryOf, machineData.backsUp);
+                    }
+                }
+            }
         }
 
         internal void sellersNodeEvent(WatchedEvent @event)
@@ -365,6 +385,21 @@ namespace TreeViewLib
         public MachineDropped MachineDroppedHandler
         {
             set { mDropped = value; }
+        }
+
+        public override String ToString()
+        {
+            return tree.ToString();
+        }
+
+        /// <summary>
+        ///  Call this function in order to close the ZK connection
+        /// </summary>
+        public void Dispose()
+        {
+            zk.Delete(id);
+            Thread.Sleep(1000); // Wait for all events to finish, kick the bucket when they are done
+            zk.Disconnect();
         }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using TreeViewLib;
 using ZooKeeperNet;
@@ -16,7 +17,18 @@ namespace TreeViewTest
             try
             {
                first = new TreeViewLib.AirlineReplicationModule("localhost", "myCluster", "myFirstSeller", new Uri("http://localhost:123"));
-               //second = new TreeViewLib.AirlineReplicationModule("localhost", "myCluster", "mySecondSeller", new Uri("http://localhost:456"));
+               first.MachineDroppedHandler = delegate(List<String> prim, List<String> bup)
+               {
+                   Console.WriteLine("Machine dropped handler");
+                   Console.WriteLine("Sellers who lost primary: " + String.Join("\n", prim));
+                   Console.WriteLine("Sellers who lost backup: " + String.Join("\n", bup));
+               };
+               first.MachineJoinedHandler = delegate(String originalSeller, Uri uri)
+               {
+                   Console.WriteLine("Machine joined handler");
+                   Console.WriteLine("Original seller joined: "  + originalSeller);
+                   Console.WriteLine("New machine URI: " + uri);
+               };
             }
             catch (Exception ex)
             {
@@ -24,15 +36,25 @@ namespace TreeViewTest
                 Console.WriteLine(ex.Message);
             }
 
+            Thread.Sleep(1000);
+
             Console.WriteLine("Adding Node...");
             ZooKeeperWrapper zk = new ZooKeeperWrapper("localhost", 10000, 5, null);
+            ZNodesDataStructures.MachineNode data = new ZNodesDataStructures.MachineNode();
+            data.originalSellerName = "nigger"; 
+            data.uri = new Uri("http://blackstreet:1024");
+            data.primaryOf = new List<string>();
+            data.primaryOf.Add("nigger");
+
             string newId = zk.Create(first.MachinesPath + "/crap", 
-                ZNodesDataStructures.serialize(new ZNodesDataStructures.MachineNode()), 
+                data, 
                 Ids.OPEN_ACL_UNSAFE, 
                 CreateMode.EphemeralSequential
                 );
-            
+
             Console.WriteLine("Created ephermal " + newId);
+            Thread.Sleep(1000);
+
             Console.WriteLine("Press return to continue");
             Console.ReadLine();
 
@@ -41,34 +63,8 @@ namespace TreeViewTest
             Console.WriteLine("Node deleted :-(");
             Console.WriteLine("Press return to continue");
             Console.ReadLine();
-            
 
-            if (zk == null)
-            {
-                Console.WriteLine("Connection died too many times :-(, qutting");
-                return;
-            }
-
-            foreach (var child in zk.GetChildren("/",null)) {
-                Console.WriteLine("Root children: " + child);
-                foreach (var secondChild in zk.GetChildren("/"+child, false))
-                {
-                    Console.WriteLine("Sub trees: " + secondChild);
-                }
-            }
-
-            Console.WriteLine("Machines in system: ");
-            foreach (var item in zk.GetChildren(first.MachinesPath, false).ToList())
-            {
-                Console.WriteLine(item);
-            }
-
-            //Console.WriteLine("Checking tree view: ");
-            //foreach (var machine in second.Tree.Machines)
-            //{
-            //    Console.WriteLine("Name: " + machine.Key + " Uri: " + machine.Value.uri);
-            //}
-
+            first.Dispose();
             Console.WriteLine("Press any key to quit");
             Console.ReadLine();
         }

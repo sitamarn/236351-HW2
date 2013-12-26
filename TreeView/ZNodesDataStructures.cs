@@ -15,9 +15,20 @@ namespace TreeViewLib
         [Serializable]
         public class MachineNode
         {
+            public String originalSellerName = "";
             public Uri uri = null;
             public List<String> primaryOf = new List<String>();
             public List<String> backsUp = new List<String>();
+
+            public override string ToString()
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("Original seller name: " + originalSellerName);
+                sb.AppendLine("Machine URI: " + uri.ToString());
+                sb.AppendLine("Primary of: " + String.Join(" ", primaryOf));
+                sb.AppendLine("Backup of: " + String.Join(" ", backsUp));
+                return sb.ToString();
+            }
         }
 
         [Serializable]
