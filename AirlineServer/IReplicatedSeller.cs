@@ -12,7 +12,7 @@ namespace AirlineServer
     {
         [OperationContract]
         void setMachineAsPrimary(string sellerName);
-
+        
         [OperationContract]
         void setMachineAsBackup(string sellerName);
 

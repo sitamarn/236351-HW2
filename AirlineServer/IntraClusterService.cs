@@ -5,6 +5,7 @@ using System.ServiceModel;
 using System.ServiceModel.Description;
 using System.Text;
 using System.Threading.Tasks;
+using TreeViewLib;
 
 namespace AirlineServer
 {
@@ -18,6 +19,67 @@ namespace AirlineServer
             primaries = new List<Seller>();
             primaries.Add(initialSeller);
             backups = new List<Seller>();
+        }
+
+        private List<string> getTheMostBusyMachineByPrimaries(){
+            Dictionary<string, ZNodesDataStructures.MachineNode> machines = Machines();
+
+            return (from p in machines orderby p.Value.primaryOf.Count descending select p.Key ).ToList();
+        }
+
+        private List<string> getTheMostBusyMachineByBackups()
+        {
+            Dictionary<string, ZNodesDataStructures.MachineNode> machines = Machines();
+
+            return (from p in machines orderby p.Value.backsUp.Count descending select p.Key).ToList();
+        }
+
+
+        
+        private void balanceTheTreeAfterJoined(string joinedMachine, Uri machine)
+        {
+            Dictionary<string, ZNodesDataStructures.MachineNode> machines = Machines();
+            Dictionary<string, int> balancesP = new Dictionary<string, int>();
+            Dictionary<string, int> balancesB = new Dictionary<string, int>();
+            int averageP = 0, averageB = 0;
+            foreach (string mac in machines.Keys)
+            {
+                averageP += machines[mac].primaryOf.Count;
+                averageB += machines[mac].backsUp.Count;
+            }
+            averageP = Convert.ToInt32(Math.Floor(Convert.ToDecimal(averageP) / machines.Count));
+            averageB = Convert.ToInt32(Math.Floor(Convert.ToDecimal(averageB) / machines.Count));
+            foreach(string machineName in getTheMostBusyMachineByPrimaries()){
+                while(machines[machineName].primaryOf.Count > 1+ averageP){
+                Uri busyUri = machines[machineName].uri;
+                //TODO: SOME SOAP CODE
+
+                //TODO: SOME UPDATDING TREE CODE
+                    continue;
+                }
+                break;
+            }
+
+            
+            
+            foreach(string machineName in getTheMostBusyMachineByBackups()){
+                if(machines[machineName].backsUp.Count > 1+ averageP){
+                Uri busyUri = machines[machineName].uri;
+                   foreach(string backup in machines[machineName].backsUp){
+                       while(machines[machineName].backsUp.Count > 1+ averageP){
+                       if(!machines[joinedMachine].primaryOf.Contains(backup)){
+                           Uri busyuri = machines[machineName].uri;
+                           //TODO: SOME SOAP CODE
+                           //TODO: SOME UPDATDING TREE CODE         
+                       }
+                   }
+                   }
+
+
+                    continue;
+                }
+                break;
+            }
         }
 
         public void setMachineAsPrimary(string sellerName)
