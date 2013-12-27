@@ -92,7 +92,7 @@ namespace AirlineServer
 
            // Builder
             SellerService sa = new SellerService();
-            IntraClusterService ics = new IntraClusterService(seller);
+            IntraClusterService ics = new IntraClusterService(seller, null, null, null, null);
             try
             {
                 using (ServiceHost sellerHost = new ServiceHost(sa, new Uri(sellerAddress)))

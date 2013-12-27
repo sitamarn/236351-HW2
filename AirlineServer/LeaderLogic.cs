@@ -17,7 +17,7 @@ namespace AirlineServer
 
         public void balanceTheTree(string coordinator, Uri machine)
         {
-            Dictionary<string, ZNodesDataStructures.MachineNode> machines = Machines();
+            Dictionary<string, ZNodesDataStructures.MachineNode> machines = null; //TODO: fix me Machines();
             Dictionary<string, int> balancesP = new Dictionary<string, int>();
             Dictionary<string, int> balancesB = new Dictionary<string, int>();
             int averageP = 0, averageB = 0;
@@ -43,33 +43,6 @@ namespace AirlineServer
 
         }
 
-        public void respondIfNewNode(String sellerName, Uri machine)
-        {
-            if(isLeader){
-                Dictionary<string, ZNodesDataStructures.MachineNode> machines =  Machines();
-                
-
-
-            }
-            if(sellersWhoLostPrimary.Intersect(pri
-            if (checkIfLeader())
-            {
-                Tuple<Uri, Uri> owners = chooseBackupAndPrimaryConsideringLoadBalancing(null);
-
-
-            }
-        }
-
-        public void respondIfMachineIsDead(List<String> sellersWhoLostPrimary, List<String> sellersWhoLostBackup)
-        {
-            if(sellersWhoLostPrimary.Intersect(pri
-            if (checkIfLeader())
-            {
-                Tuple<Uri, Uri> owners = chooseBackupAndPrimaryConsideringLoadBalancing(null);
-
-
-            }
-        }
         public void respondIfMachineIsDead(){
             
         }
@@ -106,12 +79,13 @@ namespace AirlineServer
             
         }
 
-        private bool checkIfLeader()
+        /*private bool checkIfLeader()
         {
             string minMachine = TreeViewLib.TreeView.Machines.Machines.Keys.Min();
             //string myID = TreeViewLib.TreeView.Instance.myID;
             //return myID.Equals(minMachine);
             return true;
         }
+         */
     }
 }

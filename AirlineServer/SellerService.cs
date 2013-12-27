@@ -14,7 +14,7 @@ namespace AirlineServer
         public List<AirlineServer.Trip> getTrips(string src, string dst, DateTime date, List<string> sellers)
         {
             List<string> sellersToSearch;
-            Dictionary<string, Uri> machines = TreeViewLib.TreeView.Machines.Snapshot;
+            Dictionary<string, Uri> machines = null; //TODO: FIX ME
             List<Flight> sourceFlights = new List<Flight>();
             List<Flight> dstFlights = new List<Flight>();
             List<Trip> trips = new List<Trip>();
