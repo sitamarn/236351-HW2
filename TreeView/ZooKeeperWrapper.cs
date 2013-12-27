@@ -224,6 +224,20 @@ namespace TreeViewLib
             return data;
         }
 
+        public Stat SetData<T>(string nodePath, T data) where T : new()
+        {
+            Stat s = null;
+            if (Exists(nodePath))
+            {
+                s = GetStat(nodePath);
+                if (s != null)
+                {
+                    s = SetData(nodePath, data, s.Version); 
+                }
+            }
+            return s;
+        }
+
         public Stat SetData<T>(string nodePath, T data, int version) where T : new()
         {
             Stat stat = null;

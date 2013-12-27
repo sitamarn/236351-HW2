@@ -14,21 +14,32 @@ namespace TreeViewTest
         {
             TreeViewLib.AirlineReplicationModule first = null;
             TreeViewLib.AirlineReplicationModule second = null;
+            ReplicationDriver rd = new ReplicationDriver("myCluster");
+            rd.purgeZooKeeper();
+
             try
             {
-               first = new TreeViewLib.AirlineReplicationModule("localhost", "myCluster", "myFirstSeller", new Uri("http://localhost:123"));
-               first.MachineDroppedHandler = delegate(List<String> prim, List<String> bup)
-               {
-                   Console.WriteLine("Machine dropped handler");
-                   Console.WriteLine("Sellers who lost primary: " + String.Join("\n", prim));
-                   Console.WriteLine("Sellers who lost backup: " + String.Join("\n", bup));
-               };
-               first.MachineJoinedHandler = delegate(String originalSeller, Uri uri)
-               {
-                   Console.WriteLine("Machine joined handler");
-                   Console.WriteLine("Original seller joined: "  + originalSeller);
-                   Console.WriteLine("New machine URI: " + uri);
-               };
+                first = new TreeViewLib.AirlineReplicationModule("localhost", "myCluster", "myFirstSeller", new Uri("http://localhost:123"));
+                second= new TreeViewLib.AirlineReplicationModule("localhost", "myCluster", "mySecondSeller", new Uri("http://remoteHost:456"));
+
+                MachineDropped droppedHandler = delegate(List<String> prim, List<String> bup)
+                {
+                    Console.WriteLine("Machine dropped handler");
+                    Console.WriteLine("Sellers who lost primary: " + String.Join("\n", prim));
+                    Console.WriteLine("Sellers who lost backup: " + String.Join("\n", bup));
+                };
+                
+                MachineJoined joinedHandler = delegate(String machineName, String originalSeller, Uri uri)
+                {
+                    Console.WriteLine("Machine "+machineName+" joined handler");
+                    Console.WriteLine("Original seller joined: "  + originalSeller);
+                    Console.WriteLine("New machine URI: " + uri);
+                };
+
+                first.MachineDroppedHandler =  droppedHandler;
+                first.MachineJoinedHandler = joinedHandler;
+                second.MachineDroppedHandler = droppedHandler;
+                second.MachineJoinedHandler = joinedHandler;
             }
             catch (Exception ex)
             {
@@ -38,35 +49,37 @@ namespace TreeViewTest
 
             Thread.Sleep(1000);
 
-            Console.WriteLine("Adding Node...");
-            ZooKeeperWrapper zk = new ZooKeeperWrapper("localhost", 10000, 5, null);
-            ZNodesDataStructures.MachineNode data = new ZNodesDataStructures.MachineNode();
-            data.originalSellerName = "nigger"; 
-            data.uri = new Uri("http://blackstreet:1024");
-            data.primaryOf = new List<string>();
-            data.primaryOf.Add("nigger");
-
-            string newId = zk.Create(first.MachinesPath + "/crap", 
-                data, 
-                Ids.OPEN_ACL_UNSAFE, 
-                CreateMode.EphemeralSequential
-                );
-
-            Console.WriteLine("Created ephermal " + newId);
+            
+            rd.addSeller("Kushim");
             Thread.Sleep(1000);
+            Console.WriteLine(first.ToString());
+            Console.WriteLine("* Added seller");
+            Console.ReadKey();
 
-            Console.WriteLine("Press return to continue");
-            Console.ReadLine();
+            ZNodesDataStructures.MachineNode mn = new ZNodesDataStructures.MachineNode()
+            {
+                primaryOf = new List<String>() { "Kushim" },
+                uri = new Uri("http://localhost:123"),
+                backsUp = new List<String>(),
+                originalSellerName = "myFirstSeller"
+            };
 
-            Console.WriteLine("Removing Node...");
-            zk.Delete(newId);
-            Console.WriteLine("Node deleted :-(");
-            Console.WriteLine("Press return to continue");
-            Console.ReadLine();
+            Console.WriteLine("Updating first seller to be a primary of someone");
+            first.updateMachineData(mn);
 
-            first.Dispose();
-            Console.WriteLine("Press any key to quit");
-            Console.ReadLine();
+            Thread.Sleep(1000);
+            Console.WriteLine(first.ToString());
+            Console.WriteLine("Press any key to continue");
+            Console.ReadKey();
+
+            mn.primaryOf.Clear();
+
+            first.updateMachineData(mn);
+
+            Thread.Sleep(1000);
+            Console.WriteLine(first.ToString());
+            Console.WriteLine("Press any key to continue");
+            Console.ReadKey();
         }
     }
 }

@@ -120,6 +120,18 @@ namespace TreeViewLib
             return node;
         }
 
+        /// <summary>
+        /// Updates machineName data record from zookeeper and returns the old data which was overwritten
+        /// </summary>
+        /// <param name="machineName"></param>
+        /// <returns></returns>
+        public ZNodesDataStructures.MachineNode updateMachineData(String machineName)
+        {
+            ZNodesDataStructures.MachineNode oldData = getLocalMachineData(machineName);
+            updateMachineDataSelectively(machineName);
+            return oldData;
+        }
+
         private void updateMachineDataSelectively(List<String> machines)
         {
             foreach(var machine in machines) 
@@ -136,10 +148,21 @@ namespace TreeViewLib
                 if (zk.Exists(elmPath))
                 {
                     ZNodesDataStructures.MachineNode data = zk.GetData<ZNodesDataStructures.MachineNode>(elmPath, false);
-                    machinesData.Add(machineName, data);
+                    if(machinesData.ContainsKey(machineName)) 
+                    {
+                        machinesData[machineName] = data;
+                    } 
+                    else 
+                    {
+                        machinesData.Add(machineName, data);
+                    }
                 }
             }
-            catch (Exception) { Console.WriteLine("Failed fetching " + machineName + " data, ignoring update request"); }
+            catch (Exception ex) 
+            { 
+                Console.WriteLine("Failed fetching " + machineName + " data, ignoring update request");
+                Console.WriteLine(ex.Message);
+            }
         }
 
         /// <summary>
@@ -155,8 +178,12 @@ namespace TreeViewLib
             sb.AppendLine("Machines: " + String.Join(" ", machinesNames.ToArray()));
 //            sb.AppendLine("Machines Data: ");
 //            sb.AppendLine(String.Join("\n", machinesData.ToArray()));
-            sb.AppendLine("Sellers: " + String.Join(" ", sellersNames.ToArray()));
-
+            //sb.AppendLine("Sellers: " + String.Join(" ", sellersNames.ToArray()));
+            foreach (var seller in sellersNames)
+            {
+                sb.Append("Seller " + seller + ":"); 
+                sb.AppendLine("["+String.Join(",", zk.GetChildren(sellersPath + "/" + seller, false))+"]");
+            }
             return sb.ToString();
         }
     }

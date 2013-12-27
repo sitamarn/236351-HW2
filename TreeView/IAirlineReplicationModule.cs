@@ -10,10 +10,11 @@ namespace TreeViewLib
 {
     interface IAirlineReplicationModule
     {
-        /// <summary>
-        /// Init this machine as new
-        /// </summary>
-        void registerMachinesNode();
+
+        void initialize(String address, String clusterName, String originalSeller, Uri localService);
+        void updateMachineData(ZNodesDataStructures.MachineNode machineData);
+        
+
         /// <summary>
         /// This function is called when a machine drops from the Zookeeper tree
         /// </summary>

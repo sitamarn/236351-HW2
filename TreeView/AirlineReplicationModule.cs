@@ -1,6 +1,7 @@
 ﻿using Org.Apache.Zookeeper.Data;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using ZooKeeperNet;
 
@@ -8,11 +9,18 @@ namespace TreeViewLib
 {
     public class AirlineReplicationModule : IAirlineReplicationModule, IReplicationModuleEvents
     {
+        private static AirlineReplicationModule instance = new AirlineReplicationModule();
+        public static AirlineReplicationModule Instance
+        {
+            get { return instance; }
+        }
+
         private ZooKeeperWrapper zk = null;
 
         public static readonly string MACHINE_PREFIX = "machine_";
         public static readonly string MACHINES_NODE = "machines";
         public static readonly string SELLERS_NODE = "sellers";
+        public static readonly string BARRIER_NODE = "__barrier__";
         public static readonly int SECONDS_TIMEOUT = 10000;
         public static readonly int ZK_RETRIES = 5;
 
@@ -40,6 +48,7 @@ namespace TreeViewLib
         public string OriginalSellerPath { get { return "/" + clusterName + "/" + SELLERS_NODE + "/" + originalSeller; } }
         public string MachinesPath { get { return "/" + clusterName + "/" + MACHINES_NODE; } }
         public string MachinePath { get { return id;  } }
+        public string BarrierPath { get { return "/" + clusterName + "/" + BARRIER_NODE; } }
 
         public abstract class AirlineReplicationModuleWatcher : IWatcher {
             protected AirlineReplicationModule replicationModule = null;
@@ -92,7 +101,14 @@ namespace TreeViewLib
             }
         }
 
+        private AirlineReplicationModule() { }
+
         public AirlineReplicationModule(String address, String clusterName, String originalSeller, Uri localService)
+        {
+            initialize(address, clusterName, originalSeller, localService);
+        }
+
+        public void initialize(String address, String clusterName, String originalSeller, Uri localService)
         {
             this.clusterName = clusterName;
             this.zookeeperAddress = address;
@@ -107,12 +123,21 @@ namespace TreeViewLib
             constructClusterSubTree(); // Constructs the cluster's subtree if needed
             registerMachinesNode(); // Add this machine to the Machines subtree
             registerSellersNode();  // Add the seller which this machine represents to the sellers subtree
-
+            
             setMachinesChildrenWatcher();
             setSellersChildrenWatcher();
 
             tree = new TreeView(zk, MachinesPath, SellersPath);
             tree.refresh();
+        }
+
+        public void updateMachineData(ZNodesDataStructures.MachineNode machineData)
+        {
+            Stat s = zk.SetData(id, machineData);
+            if (s == null)
+            {
+                Console.WriteLine("Update machine data of " + id + " failed");
+            }
         }
 
         private Dictionary<string, ZNodesDataStructures.MachineNode> getMachines()
@@ -231,7 +256,7 @@ namespace TreeViewLib
         /// <summary>
         /// Initialize this as a new machine - this method will add this to the zookeeper tree
         /// </summary>
-        public void registerMachinesNode()
+        private void registerMachinesNode()
         {
             try
             {
@@ -249,7 +274,7 @@ namespace TreeViewLib
             }            
         }
 
-        public void registerSellersNode()
+        private void registerSellersNode()
         {
             try
             {
@@ -257,19 +282,6 @@ namespace TreeViewLib
                 {
                     zk.Create(OriginalSellerPath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.Persistent);
                 }
-
-                var node = new ZNodesDataStructures.SellerNode();
-                node.role = ZNodesDataStructures.SellerNode.NodeRole.Main;
-                node.uri = intraClusterService;
-                node.version = -1; 
-                node.nodeId = id;
-                // All these machines need to be removed from being backups
-                List<String> sellerChildren = zk.GetChildren(OriginalSellerPath, false);
-                if (vRefresh != null)
-                {
-                    //vRefresh(originalSeller, ); //TODO: fix this shit
-                }
-                zk.Create(OriginalSellerPath + "/" + MACHINE_PREFIX, node, Ids.OPEN_ACL_UNSAFE, CreateMode.PersistentSequential);
             }
 
             catch (KeeperException e)
@@ -310,8 +322,19 @@ namespace TreeViewLib
                     {
                         foreach (var newNode in cd.added)
                         {
+                            int numMachines= zk.GetChildren(MachinesPath, true).Count();
+                            ZKBarrier zkb = new ZKBarrier(zk, BarrierPath, numMachines);
                             var machineData = tree.getLocalMachineData(newNode);
-                            mJoined(machineData.originalSellerName, machineData.uri);
+                            zkb.Enter();
+                            if (mJoined != null)
+                            {
+                                mJoined(newNode, machineData.originalSellerName, machineData.uri);
+                            }
+                            zkb.Leave();
+                            if (mLBDone != null)
+                            {
+                                mLBDone();
+                            }
                         }
                     }
                 }
@@ -325,7 +348,6 @@ namespace TreeViewLib
                 Console.WriteLine("Got message on path " + @event.Path + " Which doesn't belong to this TreeView, ignoring");
             }
 
-
             zk.GetChildren(MachinesPath, new MachinesNodeWatch(this)); // Refresh watcher on Machines node
         }
 
@@ -337,7 +359,22 @@ namespace TreeViewLib
             {
                 if (@event.Path == id)
                 {
-                    // TODO: put an event here
+                    String machine = @event.Path;
+                    machine = machine.Substring(machine.LastIndexOf('/') + 1);
+                    ZNodesDataStructures.MachineNode oldData = tree.updateMachineData(machine); // Gets old record and refresh local one
+                    ZNodesDataStructures.MachineNode newData = tree.getLocalMachineData(machine); // Gets refreshed record
+
+
+
+                    List<String> primariesToLeave   = oldData.primaryOf.Except(newData.primaryOf).ToList();
+                    List<String> primariesToJoin    = newData.primaryOf.Except(oldData.primaryOf).ToList();
+
+                    diffMergeMachineSellers(machine, newData.uri, ZNodesDataStructures.SellerNode.NodeRole.Main , primariesToLeave, primariesToJoin);
+
+                    List<String> backupsToLeave = oldData.backsUp.Except(newData.backsUp).ToList();
+                    List<String> backupsToJoin = newData.backsUp.Except(oldData.backsUp).ToList();
+
+                    diffMergeMachineSellers(machine, newData.uri, ZNodesDataStructures.SellerNode.NodeRole.Backup, backupsToLeave, backupsToJoin);
                 }
             }
 
@@ -359,6 +396,22 @@ namespace TreeViewLib
                         mDropped(machineData.primaryOf, machineData.backsUp);
                     }
                 }
+            }
+        }
+
+        private void diffMergeMachineSellers(String machine, Uri machineUri, ZNodesDataStructures.SellerNode.NodeRole machineRole, List<String> toLeave, List<String> toJoin)
+        {
+            Console.WriteLine("Diff merge " + machineRole + " on " + id);
+            foreach (var seller in toJoin)
+            {
+                ZNodesDataStructures.SellerNode sellerNode = new ZNodesDataStructures.SellerNode() 
+                    { role = machineRole, uri = machineUri, nodeId = id };
+                zk.Create(SellersPath + "/" + seller + "/" + machine, sellerNode, Ids.OPEN_ACL_UNSAFE, CreateMode.Ephemeral);
+            }
+
+            foreach (var seller in toLeave)
+            {
+                zk.Delete(SellersPath + "/" + seller + "/" + machine);
             }
         }
 
@@ -398,8 +451,15 @@ namespace TreeViewLib
         public void Dispose()
         {
             zk.Delete(id);
-            Thread.Sleep(1000); // Wait for all events to finish, kick the bucket when they are done
+            // Wait for all events to finish, kick the bucket when they are done
+            Thread.Sleep(1000);  // I can haz programming
             zk.Disconnect();
+        }
+
+        private LoadBalancingDone mLBDone = null;
+        public LoadBalancingDone LoadBalancingDoneHandler
+        {
+            set { mLBDone = value; }
         }
     }
 }
