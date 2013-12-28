@@ -173,12 +173,22 @@ namespace TreeViewLib
         public override String ToString()
         {
             StringBuilder sb = new StringBuilder();
-            refresh();
+            sb.AppendLine("=============================================================");
+            sb.AppendLine("Local tree view: ");
+            List<String> machines = zk.GetChildren(machinesPath, false);
+            sb.AppendLine("Machines: " + String.Join(" ", machines.ToArray()));
 
+            List<String> sellers = zk.GetChildren(sellersPath, false);
+            foreach (var seller in sellers)
+            {
+                sb.Append("Seller " + seller + ":");
+                sb.AppendLine("{" + String.Join(",", zk.GetChildren(sellersPath + "/" + seller, false)) + "}");
+            }
+
+
+
+            sb.AppendLine("Remote tree view: ");
             sb.AppendLine("Machines: " + String.Join(" ", machinesNames.ToArray()));
-//            sb.AppendLine("Machines Data: ");
-//            sb.AppendLine(String.Join("\n", machinesData.ToArray()));
-            //sb.AppendLine("Sellers: " + String.Join(" ", sellersNames.ToArray()));
             foreach (var seller in sellersNames)
             {
                 sb.Append("Seller " + seller + ":"); 

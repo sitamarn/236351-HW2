@@ -3,13 +3,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using ZooKeeperNet;
 
 namespace TreeViewLib
 {
-    public class ZooKeeperWrapper
+    public class ZooKeeperWrapper : IWatcher
     {
+        private AutoResetEvent connected = new AutoResetEvent(false);
+
         private Boolean isDisposed = true;
         private Boolean verbose = false;
         private readonly int retries;
@@ -18,6 +21,10 @@ namespace TreeViewLib
         private string zookeeperAddress = null;
         private ZooKeeper zk = null;
         public ZooKeeper Handler { get { return zk; } }
+        public String Address { get { return zookeeperAddress; } }
+        public int Timeout { get { return timeout; } }
+        public int Retries { get { return retries; } }
+        public Boolean Connected { get { return !isDisposed && zk.State.IsAlive(); } }
 
         public ZooKeeperWrapper(String address, int timeout_sec, int retry, IWatcher watcher, Boolean verbose = false)
         {
@@ -49,30 +56,35 @@ namespace TreeViewLib
 
         public void Connect()
         {
-            Disconnect();
-            int tries = retries;
-            while ((tries--) > 0)
-            {
-                try
-                {
-                    zk = new ZooKeeper(zookeeperAddress, new TimeSpan(0, 0, timeout), treeWatcher);
-                    isDisposed = false;
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    if (tries == 0)
-                    {
-                        Console.WriteLine("Creating new zookeeper exception after #" + retries + "retrues :\n" + ex.Message);
-                        Console.WriteLine("Last retry, throwing exception");
-                        throw ex;
-                    }
-                }
-                if (zk != null)
-                {
-                    break;
-                }
-            }
+            zk = new ZooKeeper(zookeeperAddress, new TimeSpan(0, 0, timeout), this);
+            Console.WriteLine("Waiting for Zookeeper to connect...");
+            connected.WaitOne();
+            zk.Register(treeWatcher);
+
+            //Disconnect();
+            //int tries = retries;
+            //while ((tries--) > 0)
+            //{
+            //    try
+            //    {
+            //        zk = new ZooKeeper(zookeeperAddress, new TimeSpan(0, 0, timeout), treeWatcher);
+            //        isDisposed = false;
+            //        break;
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        if (tries == 0)
+            //        {
+            //            Console.WriteLine("Creating new zookeeper exception after #" + retries + "retrues :\n" + ex.Message);
+            //            Console.WriteLine("Last retry, throwing exception");
+            //            throw ex;
+            //        }
+            //    }
+            //    if (zk != null)
+            //    {
+            //        break;
+            //    }
+            //}
         }
 
         public void Delete(String path)
@@ -339,7 +351,7 @@ namespace TreeViewLib
         }
 
 
-        public Boolean Exists(string path)
+        public Boolean Exists(string path, IWatcher watch)
         {
             Boolean exists = false;
             int tries = retries;
@@ -347,7 +359,35 @@ namespace TreeViewLib
             {
                 try
                 {
-                    Stat s = zk.Exists(path, false);
+                    Stat s = zk.Exists(path, watch);
+                    if (s != null)
+                    {
+                        exists = true;
+                    }
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    if (tries == 0)
+                    {
+                        Console.WriteLine("Exists exception after #" + retries + " retries :\n" + ex.Message);
+                        Console.WriteLine("Last retry, throwing exception");
+                        throw ex;
+                    }
+                }
+            }
+            return exists;
+        }
+
+        public Boolean Exists(string path, bool watch = false)
+        {
+            Boolean exists = false;
+            int tries = retries;
+            while ((tries--) > 0)
+            {
+                try
+                {
+                    Stat s = zk.Exists(path, watch);
                     if (s != null)
                     {
                         exists = true;
@@ -378,7 +418,17 @@ namespace TreeViewLib
             {
                 throw new Exception(" retries should be >= 1");
             }
-        } 
+        }
 
+
+        public void Process(WatchedEvent @event)
+        {
+            //Console.WriteLine("["+Address+"] Event : " + @event.Type + " on " + @event.Path);
+            if (@event.State == KeeperState.SyncConnected && @event.Type == EventType.None)
+            {
+                isDisposed = false;
+                this.connected.Set();
+            }
+        }
     }
 }

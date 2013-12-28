@@ -16,6 +16,14 @@ namespace TreeViewLib
         }
 
         private ZooKeeperWrapper zk = null;
+        public Boolean Connected
+        {
+            get
+            {
+                if (zk == null) { return false; } else { return zk.Connected; }
+            }
+        }
+
 
         public static readonly string MACHINE_PREFIX = "machine_";
         public static readonly string MACHINES_NODE = "machines";
@@ -49,6 +57,7 @@ namespace TreeViewLib
         public string MachinesPath { get { return "/" + clusterName + "/" + MACHINES_NODE; } }
         public string MachinePath { get { return id;  } }
         public string BarrierPath { get { return "/" + clusterName + "/" + BARRIER_NODE; } }
+        public string MachineName { get { return id.Substring(id.LastIndexOf('/') + 1); } }
 
         public abstract class AirlineReplicationModuleWatcher : IWatcher {
             protected AirlineReplicationModule replicationModule = null;
@@ -77,7 +86,7 @@ namespace TreeViewLib
 
             public override void Process(WatchedEvent @event)
             {
-                replicationModule.machineNodeChanged(@event);
+               replicationModule.machineNodeChanged(@event);
             }
         }
 
@@ -87,7 +96,7 @@ namespace TreeViewLib
 
             public override void Process(WatchedEvent @event)
             {
-                replicationModule.machinesNodeEvent(@event);
+               replicationModule.machinesNodeEvent(@event);
             }
         }
 
@@ -97,11 +106,11 @@ namespace TreeViewLib
 
             public override void Process(WatchedEvent @event)
             {
-                replicationModule.sellersNodeEvent(@event);
+               replicationModule.sellersNodeEvent(@event);
             }
         }
 
-        private AirlineReplicationModule() { }
+        public AirlineReplicationModule() { }
 
         public AirlineReplicationModule(String address, String clusterName, String originalSeller, Uri localService)
         {
@@ -121,14 +130,23 @@ namespace TreeViewLib
             intraClusterService = localService;
 
             constructClusterSubTree(); // Constructs the cluster's subtree if needed
-            registerMachinesNode(); // Add this machine to the Machines subtree
-            registerSellersNode();  // Add the seller which this machine represents to the sellers subtree
-            
+            //
+            tree = new TreeView(zk, MachinesPath, SellersPath);
+            tree.refresh();
+
+            // Set watches
             setMachinesChildrenWatcher();
             setSellersChildrenWatcher();
 
-            tree = new TreeView(zk, MachinesPath, SellersPath);
-            tree.refresh();
+            registerSellersNode();  // Add the seller which this machine represents to the sellers subtree
+            registerMachinesNode(); // Add this machine to the Machines subtree
+            //zk.GetData<ZNodesDataStructures.MachineNode>(id, new MachineNodeWatch(this));
+
+            
+            //machinesNodeChanged();
+
+            //machinesNodeEvent(WatchedEvent @event);
+            
         }
 
         public void updateMachineData(ZNodesDataStructures.MachineNode machineData)
@@ -158,21 +176,28 @@ namespace TreeViewLib
         /// </summary>
         private void setSellersChildrenWatcher()
         {
-            try
+            if (zk.Connected)
             {
-                zk.GetChildren(SellersPath, new SellersNodeWatch(this)); // Register creation/deletion of children
-            }  catch(Exception ex) 
-            {
-                Console.WriteLine("Failed setting Sellers Node watch due to " + ex.Message);
-                throw ex;
+                try
+                {
+                    zk.GetChildren(SellersPath, new SellersNodeWatch(this)); // Register creation/deletion of children
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Failed setting Sellers Node watch due to " + ex.Message);
+                    throw ex;
+                }
             }
         }
 
         /// <summary>
         /// Set machines subtree events. this will register the following events:
-        /// 1. a new machine node joins the subtree - fires MachinesNodeWatch 
-        /// 2. an existing machine got message or died - fires MachineNodeWatch
+        /// 
+        /// <para>1. a new machine node joins the subtree - fires MachinesNodeWatch</para>
+        /// <para>2. an existing machine got message or died - fires MachineNodeWatch</para>
+        /// 
         /// </summary>
+        /// 
         private void setMachinesChildrenWatcher()
         {
             try
@@ -194,7 +219,9 @@ namespace TreeViewLib
         {
             try
             {
-                zk.Register(new ZooKeeperTreeEvent(this));
+                if(zk.Connected)
+                    zk.Register(new ZooKeeperTreeEvent(this));
+
             }
             catch (Exception ex)
             {
@@ -254,7 +281,7 @@ namespace TreeViewLib
         }
 
         /// <summary>
-        /// Initialize this as a new machine - this method will add this to the zookeeper tree
+        /// Create a node under /cluster/MACHINES for this
         /// </summary>
         private void registerMachinesNode()
         {
@@ -274,6 +301,10 @@ namespace TreeViewLib
             }            
         }
 
+        /// <summary>
+        /// Creates a seller node under /cluster/SELLERS for the seller which came up with this machine
+        /// if seller already exist, do nothing
+        /// </summary>
         private void registerSellersNode()
         {
             try
@@ -298,63 +329,78 @@ namespace TreeViewLib
 
         internal void treeNodeEvent(WatchedEvent @event)
         {
-            Console.WriteLine("treeNodeEvent event: " + @event.Type + " on " + @event.Path);
-
-            setTreeNodeEvent();
+            Console.WriteLine("["+MachineName+"] treeNodeEvent event: " + @event.Type + " on " + @event.Path);
+            if ((@event.Type == EventType.None) && (@event.State == KeeperState.Disconnected))
+            {
+                moduleDisconnect();
+            }
+            else
+            {
+                setTreeNodeEvent();
+            }
         }
 
         internal void machinesNodeEvent(WatchedEvent @event)
         {
-            Console.WriteLine("machinesNodeEvent event: " + @event.Type + " on " + @event.Path);
-            Console.WriteLine("Event fired on "+ id);
-            string[] path = @event.Path.Split('/');
-            if ((path.Length >= 3) && (path[1].Equals(clusterName) && (path[2].Equals(MACHINES_NODE))))
+
+            Console.WriteLine("[" + MachineName + "] machinesNodeEvent " + @event.Type + " on " + @event.Path );
+            //Console.WriteLine("[" + MachineName + "] machinesNodeEvent " + !((@event.Type == EventType.None) && (@event.Path == id)));
+            if (!((@event.Type == EventType.None)&&(@event.Path==id))) // NOT a deletion event
             {
-                if (@event.Type == EventType.NodeChildrenChanged)
+                string[] path = @event.Path.Split('/');
+                if ((path.Length >= 3) && (path[1].Equals(clusterName) && (path[2].Equals(MACHINES_NODE))))
                 {
-                    TreeView.ChildrenDiff cd = tree.update(); // Get diff
-                    foreach (var newNode in cd.added) // Add new watches to new nodes
+                    if (@event.Type == EventType.NodeChildrenChanged)
                     {
-                        zk.GetData<ZNodesDataStructures.MachineNode>(MachinesPath + "/" + newNode, new MachineNodeWatch(this));
+                        machinesNodeChanged();
                     }
-                    // Callback function 
-                    if (mJoined != null)
+                    else
                     {
-                        foreach (var newNode in cd.added)
-                        {
-                            int numMachines= zk.GetChildren(MachinesPath, true).Count();
-                            ZKBarrier zkb = new ZKBarrier(zk, BarrierPath, numMachines);
-                            var machineData = tree.getLocalMachineData(newNode);
-                            zkb.Enter();
-                            if (mJoined != null)
-                            {
-                                mJoined(newNode, machineData.originalSellerName, machineData.uri);
-                            }
-                            zkb.Leave();
-                            if (mLBDone != null)
-                            {
-                                mLBDone();
-                            }
-                        }
+                        Console.WriteLine("Unexpected event " + @event.Type + " on " + @event.Path + ", Ignoring...");
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Unexpected event " + @event.Type + " on " + @event.Path + ", Ignoring...");
+                    Console.WriteLine("Got message on path " + @event.Path + " Which doesn't belong to this TreeView, ignoring");
+                }
+                if (zk.Connected)
+                {
+                    zk.GetChildren(MachinesPath, new MachinesNodeWatch(this)); // Refresh watcher on Machines node
                 }
             }
-            else
-            {
-                Console.WriteLine("Got message on path " + @event.Path + " Which doesn't belong to this TreeView, ignoring");
-            }
+        }
 
-            zk.GetChildren(MachinesPath, new MachinesNodeWatch(this)); // Refresh watcher on Machines node
+        private void machinesNodeChanged()
+        {
+            if (!Connected)
+            {
+                Console.WriteLine("[" + MachineName + "] Ignoring machinesNodeChanged because connection dropped");
+                return;
+            }
+            TreeView.ChildrenDiff cd = tree.update(); // Get diff
+            foreach (var newNode in cd.added) // Add new watches to new nodes
+            {
+                zk.GetData<ZNodesDataStructures.MachineNode>(MachinesPath + "/" + newNode, new MachineNodeWatch(this));
+            }
+            // Callback function 
+            if (mJoined != null)
+            {
+                // Assuming only 1 change can happen per event
+                int numMachines = zk.GetChildren(MachinesPath, false).Count();
+        
+                if (mJoined != null)
+                {
+                    string newNode = cd.added.First();
+                    var machineData = tree.getLocalMachineData(newNode);
+                    mJoined(newNode, machineData.originalSellerName, machineData.uri);
+                }
+            }
         }
 
         internal void machineNodeChanged(WatchedEvent @event)
         {
-            Console.WriteLine("machineNodeDataChanged event: " + @event.Type + " on " + @event.Path);
-            Console.WriteLine("Event fired on " + id);
+            //Console.WriteLine("machineNodeDataChanged event: " + @event.Type + " on " + @event.Path);
+            //Console.WriteLine("Event fired on " + id);
             if (@event.Type == EventType.NodeDataChanged)
             {
                 if (@event.Path == id)
@@ -378,30 +424,49 @@ namespace TreeViewLib
                 }
             }
 
-            if (@event.Type != EventType.NodeDeleted)
+            if (@event.State != KeeperState.Disconnected)
             {
-                zk.GetData<ZNodesDataStructures.MachineNode>(@event.Path, new MachineNodeWatch(this));
-            }
-            else
-            {
-                if (@event.Type == EventType.NodeDeleted)
+                if (@event.Type != EventType.NodeDeleted) // If it wasn't node deletion - don't re-add listener to dead machine nodes
                 {
-                    // 1. Remove this node from tree view
-                    // 2. Call the callback method to the leader
-                    String machineName = @event.Path.Substring(@event.Path.LastIndexOf('/')+1);
-                    ZNodesDataStructures.MachineNode machineData = tree.Machines[machineName];
-                    tree.removeMachine(machineName);
-                    if (mDropped != null)
+                    zk.GetData<ZNodesDataStructures.MachineNode>(@event.Path, new MachineNodeWatch(this));
+                }
+                else
+                {
+                    if (@event.Type == EventType.NodeDeleted)
                     {
-                        mDropped(machineData.primaryOf, machineData.backsUp);
+                        if (@event.Path != id)
+                        {
+                            String machineName = @event.Path.Substring(@event.Path.LastIndexOf('/') + 1);
+                            ZNodesDataStructures.MachineNode machineData = tree.Machines[machineName];
+                            tree.removeMachine(machineName);
+                            if (mDropped != null)
+                            {
+                                Console.WriteLine("["+MachineName+"] Calling machine dropped callback");
+                                mDropped(machineData.primaryOf, machineData.backsUp);
+                            }
+                        }
                     }
                 }
             }
         }
 
+        private void moduleDisconnect()
+        {
+            Console.WriteLine("[" + MachineName + "] MODULE DISCONNECT CALLBACK");
+        }
+
+        /// <summary>
+        /// This function will update a machine in the Sellers subtree according to the parameters it receives
+        /// <para>TODO: if machine is set as backup, it should listen to primary and replace it upon failure</para>
+        /// </summary>
+        /// <param name="machine">The name of the machine to add in the added seller's subtree</param>
+        /// <param name="machineUri">Uri of the machine to add</param>
+        /// <param name="machineRole">The role to add this machine. Backup or Primary</param>
+        /// <param name="toLeave">Sellers which this machine need to leave</param>
+        /// <param name="toJoin">Sellers which this machine need to join</param>
         private void diffMergeMachineSellers(String machine, Uri machineUri, ZNodesDataStructures.SellerNode.NodeRole machineRole, List<String> toLeave, List<String> toJoin)
         {
-            Console.WriteLine("Diff merge " + machineRole + " on " + id);
+            Console.WriteLine("[" + MachineName + "] Diff merge " + machineRole + " on " + id);
             foreach (var seller in toJoin)
             {
                 ZNodesDataStructures.SellerNode sellerNode = new ZNodesDataStructures.SellerNode() 
@@ -417,7 +482,7 @@ namespace TreeViewLib
 
         internal void sellersNodeEvent(WatchedEvent @event)
         {
-            Console.WriteLine("sellersNodeEvent event: " + @event.Type + " on " + @event.Path);
+            Console.WriteLine("[" + MachineName + "] sellersNodeEvent event: " + @event.Type + " on " + @event.Path);
             setSellersChildrenWatcher();
         }
 
@@ -460,6 +525,21 @@ namespace TreeViewLib
         public LoadBalancingDone LoadBalancingDoneHandler
         {
             set { mLBDone = value; }
+        }
+
+        public void barrier() 
+        {
+            int machines = zk.GetChildren(MachinesPath, false).Count();
+            Console.WriteLine("["+MachineName+"] Entering arrier for " + machines + " machines");
+            ZKSynch.ZKBarrier(zk, BarrierPath, id, machines);
+        }
+
+        public void testDie()
+        {
+            zk.Disconnect();
+            Console.WriteLine("["+MachineName+"] TestDie - Killed connection, blocking for 5 seconds");
+            Thread.Sleep(5 * 1000);
+            Console.WriteLine("Done");
         }
     }
 }

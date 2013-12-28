@@ -13,7 +13,8 @@ namespace TreeViewLib
 
         void initialize(String address, String clusterName, String originalSeller, Uri localService);
         void updateMachineData(ZNodesDataStructures.MachineNode machineData);
-        
+
+        void barrier();
 
         /// <summary>
         /// This function is called when a machine drops from the Zookeeper tree

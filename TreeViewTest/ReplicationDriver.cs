@@ -23,6 +23,11 @@ namespace TreeViewTest
             get { return "/" + cluster + "/" + AirlineReplicationModule.SELLERS_NODE; }
         }
 
+        public String BarrierPath
+        {
+            get { return "/" + cluster + "/" + AirlineReplicationModule.BARRIER_NODE; }
+        }
+
         public ReplicationDriver(String cluster) 
         {
             this.cluster = cluster;        
@@ -30,7 +35,7 @@ namespace TreeViewTest
 
         public void purgeZooKeeper()
         {
-            List<String> subtrees = new List<String>() { MachinesPath, SellersPath };
+            List<String> subtrees = new List<String>() { MachinesPath, SellersPath, BarrierPath };
             foreach (var subtree in subtrees)
             {
                 //Console.WriteLine("Checking if " + subtree + " subtree exists");
