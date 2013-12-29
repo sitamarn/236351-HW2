@@ -60,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="zookeeper.conf" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TreeView\TreeView.csproj">

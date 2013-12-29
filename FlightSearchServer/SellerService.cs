@@ -11,22 +11,22 @@
 namespace AirlineServer
 {
     using System.Runtime.Serialization;
-    
-    
+
+
     [System.Diagnostics.DebuggerStepThroughAttribute()]
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Runtime.Serialization", "4.0.0.0")]
-    [System.Runtime.Serialization.DataContractAttribute(Name="Trip", Namespace="http://schemas.datacontract.org/2004/07/AirlineServer")]
+    [System.Runtime.Serialization.DataContractAttribute(Name = "Trip", Namespace = "http://schemas.datacontract.org/2004/07/AirlineServer")]
     public partial class Trip : object, System.Runtime.Serialization.IExtensibleDataObject
     {
-        
+
         private System.Runtime.Serialization.ExtensionDataObject extensionDataField;
-        
+
         private AirlineServer.Flight firstFlightField;
-        
+
         private int priceField;
-        
+
         private AirlineServer.Flight secondFlightField;
-        
+
         public System.Runtime.Serialization.ExtensionDataObject ExtensionData
         {
             get
@@ -38,7 +38,7 @@ namespace AirlineServer
                 this.extensionDataField = value;
             }
         }
-        
+
         [System.Runtime.Serialization.DataMemberAttribute()]
         public AirlineServer.Flight firstFlight
         {
@@ -51,7 +51,7 @@ namespace AirlineServer
                 this.firstFlightField = value;
             }
         }
-        
+
         [System.Runtime.Serialization.DataMemberAttribute()]
         public int price
         {
@@ -64,7 +64,7 @@ namespace AirlineServer
                 this.priceField = value;
             }
         }
-        
+
         [System.Runtime.Serialization.DataMemberAttribute()]
         public AirlineServer.Flight secondFlight
         {
@@ -78,27 +78,27 @@ namespace AirlineServer
             }
         }
     }
-    
+
     [System.Diagnostics.DebuggerStepThroughAttribute()]
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Runtime.Serialization", "4.0.0.0")]
-    [System.Runtime.Serialization.DataContractAttribute(Name="Flight", Namespace="http://schemas.datacontract.org/2004/07/AirlineServer")]
+    [System.Runtime.Serialization.DataContractAttribute(Name = "Flight", Namespace = "http://schemas.datacontract.org/2004/07/AirlineServer")]
     public partial class Flight : object, System.Runtime.Serialization.IExtensibleDataObject
     {
-        
+
         private System.Runtime.Serialization.ExtensionDataObject extensionDataField;
-        
+
         private System.DateTime dateField;
-        
+
         private string dstField;
-        
+
         private string flightNumberField;
-        
+
         private int priceField;
-        
+
         private string sellerField;
-        
+
         private string srcField;
-        
+
         public System.Runtime.Serialization.ExtensionDataObject ExtensionData
         {
             get
@@ -110,7 +110,7 @@ namespace AirlineServer
                 this.extensionDataField = value;
             }
         }
-        
+
         [System.Runtime.Serialization.DataMemberAttribute()]
         public System.DateTime date
         {
@@ -123,7 +123,7 @@ namespace AirlineServer
                 this.dateField = value;
             }
         }
-        
+
         [System.Runtime.Serialization.DataMemberAttribute()]
         public string dst
         {
@@ -136,7 +136,7 @@ namespace AirlineServer
                 this.dstField = value;
             }
         }
-        
+
         [System.Runtime.Serialization.DataMemberAttribute()]
         public string flightNumber
         {
@@ -149,7 +149,7 @@ namespace AirlineServer
                 this.flightNumberField = value;
             }
         }
-        
+
         [System.Runtime.Serialization.DataMemberAttribute()]
         public int price
         {
@@ -162,7 +162,7 @@ namespace AirlineServer
                 this.priceField = value;
             }
         }
-        
+
         [System.Runtime.Serialization.DataMemberAttribute()]
         public string seller
         {
@@ -175,7 +175,7 @@ namespace AirlineServer
                 this.sellerField = value;
             }
         }
-        
+
         [System.Runtime.Serialization.DataMemberAttribute()]
         public string src
         {
@@ -193,14 +193,14 @@ namespace AirlineServer
 
 
 [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
-[System.ServiceModel.ServiceContractAttribute(ConfigurationName="ISellerService")]
+[System.ServiceModel.ServiceContractAttribute(ConfigurationName = "ISellerService")]
 public interface ISellerService
 {
-    
-    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/ISellerService/getTrips", ReplyAction="http://tempuri.org/ISellerService/getTripsResponse")]
+
+    [System.ServiceModel.OperationContractAttribute(Action = "http://tempuri.org/ISellerService/getTrips", ReplyAction = "http://tempuri.org/ISellerService/getTripsResponse")]
     AirlineServer.Trip[] getTrips(string src, string dst, System.DateTime date, string[] sellers);
-    
-    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/ISellerService/getTrips", ReplyAction="http://tempuri.org/ISellerService/getTripsResponse")]
+
+    [System.ServiceModel.OperationContractAttribute(Action = "http://tempuri.org/ISellerService/getTrips", ReplyAction = "http://tempuri.org/ISellerService/getTripsResponse")]
     System.Threading.Tasks.Task<AirlineServer.Trip[]> getTripsAsync(string src, string dst, System.DateTime date, string[] sellers);
 }
 
@@ -213,36 +213,36 @@ public interface ISellerServiceChannel : ISellerService, System.ServiceModel.ICl
 [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
 public partial class SellerServiceClient : System.ServiceModel.ClientBase<ISellerService>, ISellerService
 {
-    
+
     public SellerServiceClient()
     {
     }
-    
-    public SellerServiceClient(string endpointConfigurationName) : 
-            base(endpointConfigurationName)
+
+    public SellerServiceClient(string endpointConfigurationName) :
+        base(endpointConfigurationName)
     {
     }
-    
-    public SellerServiceClient(string endpointConfigurationName, string remoteAddress) : 
-            base(endpointConfigurationName, remoteAddress)
+
+    public SellerServiceClient(string endpointConfigurationName, string remoteAddress) :
+        base(endpointConfigurationName, remoteAddress)
     {
     }
-    
-    public SellerServiceClient(string endpointConfigurationName, System.ServiceModel.EndpointAddress remoteAddress) : 
-            base(endpointConfigurationName, remoteAddress)
+
+    public SellerServiceClient(string endpointConfigurationName, System.ServiceModel.EndpointAddress remoteAddress) :
+        base(endpointConfigurationName, remoteAddress)
     {
     }
-    
-    public SellerServiceClient(System.ServiceModel.Channels.Binding binding, System.ServiceModel.EndpointAddress remoteAddress) : 
-            base(binding, remoteAddress)
+
+    public SellerServiceClient(System.ServiceModel.Channels.Binding binding, System.ServiceModel.EndpointAddress remoteAddress) :
+        base(binding, remoteAddress)
     {
     }
-    
+
     public AirlineServer.Trip[] getTrips(string src, string dst, System.DateTime date, string[] sellers)
     {
         return base.Channel.getTrips(src, dst, date, sellers);
     }
-    
+
     public System.Threading.Tasks.Task<AirlineServer.Trip[]> getTripsAsync(string src, string dst, System.DateTime date, string[] sellers)
     {
         return base.Channel.getTripsAsync(src, dst, date, sellers);

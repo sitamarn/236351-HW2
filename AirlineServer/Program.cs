@@ -9,11 +9,14 @@ using System.Text;
 using System.Threading.Tasks;
 using Registeration;
 using System.Net;
+using TreeViewLib;
+using System.Configuration;
 
 namespace AirlineServer
 {
     class Program
     {
+        
         /// <summary>
         /// Read the seller's flight from the given file
         /// </summary>
@@ -54,12 +57,19 @@ namespace AirlineServer
             return seller;
         }
 
+        static string readZooKeeperAddress()
+        {
+            AppSettingsReader cnfg = new AppSettingsReader();
+            string zkAddress = (string)cnfg.GetValue("ZooKeeperCNFG", typeof(string));
+            return zkAddress;
+        }
         /// <summary>
         /// Main :)
         /// </summary>
         /// <param name="args"><name> <alliance> <search server port> <airline servers port> <flights search server URI #2> <input file></param>
         static void Main(string[] args)
         {
+            object lockObject = new object();
             if (args.Length != 6)
             {
                 Console.WriteLine("Bad arguments");
@@ -85,14 +95,26 @@ namespace AirlineServer
                 return;
             }
 
+            string zkAddress = null;
+            try
+            {
+                zkAddress = readZooKeeperAddress();
+            }
+            catch
+            {
+                Console.WriteLine("Error: bad configuration file!");
+                return;
+            }
 
             // Read arguments
             string intraClusterAddress = @"http://localhost:" + args[3] + @"/IntraClusterService";
             string sellerAddress = @"http://localhost:" + args[2] + @"/SellerService";
 
            // Builder
-            SellerService sa = new SellerService();
-            IntraClusterService ics = new IntraClusterService(seller, null, null, null, null);
+            SellerService sa = new SellerService(lockObject);
+            //AirlineReplicationModule.Instance.initialize(zkAddress, args[1], args[0], new Uri(intraClusterAddress));
+
+            IntraClusterService ics = new IntraClusterService(seller, args[0], url, sellerAddress, args[1], lockObject);
             try
             {
                 using (ServiceHost sellerHost = new ServiceHost(sa, new Uri(sellerAddress)))

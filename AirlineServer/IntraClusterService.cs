@@ -21,8 +21,9 @@ namespace AirlineServer
         string mysearchServerAddress;
         string myAddress;
         string clusterName;
+        object locker;
 
-        public IntraClusterService(Seller initialSeller, string name, string searchServerAddress, string thisAddress, string clusterName)
+        public IntraClusterService(Seller initialSeller, string name, string searchServerAddress, string thisAddress, string clusterName, object lockObject)
         {
             primaries = new List<Seller>();
             primaries.Add(initialSeller);
@@ -32,6 +33,7 @@ namespace AirlineServer
             mysearchServerAddress= searchServerAddress;
             myAddress = thisAddress;
             this.clusterName = clusterName;
+            locker = lockObject;
         }
 
         private List<string> getTheMostBusyMachineByPrimaries(Dictionary<string, ZNodesDataStructures.MachineNode> machines){
@@ -49,14 +51,12 @@ namespace AirlineServer
 
         private bool checkIfLeader()
         {
-            string minMachine = null; // TODO: fix me TreeViewLib.TreeView.Machines.Machines.Keys.Min();
-            //string myID = TreeViewLib.TreeView.Instance.myID;
-            return isLeader = myName.Equals(minMachine);
+            return isLeader = myName.Equals(AirlineReplicationModule.Instance.Machines.Keys.Min());
         }
 
         public void respondIfNewNode(String machineName, String sellerName, Uri machine )
         {
-            Dictionary<string, ZNodesDataStructures.MachineNode> machines = null;// TODO: FIX ME Machines();
+            Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
             foreach(string smachine in machines.Keys){
                 machines[smachine].primaryOf.Remove(sellerName);
                 machines[smachine].backsUp.Remove(sellerName);   
@@ -92,9 +92,6 @@ namespace AirlineServer
         
         private void balanceTheTreeAfterJoined(Dictionary<string, ZNodesDataStructures.MachineNode> machines,string joinedMachine, Uri machine)
         {
-            //Dictionary<string, ZNodesDataStructures.MachineNode> machines = Machines();
-            //Dictionary<string, int> balancesP = new Dictionary<string, int>();
-            //Dictionary<string, int> balancesB = new Dictionary<string, int>();
             int averageP = 0, averageB = 0;
             foreach (string mac in machines.Keys)
             {
@@ -143,17 +140,19 @@ namespace AirlineServer
                 }
             }
 
-
-            //Barrier
-            //updateTree(myName,machines[myName].primaryOf, machines[myName].backsUp);
-            foreach (Seller prim in primaries)
+            lock (locker)
             {
-                if (!machines[myName].primaryOf.Contains(prim.name)) primaries.Remove(prim);
-            }
+                AirlineReplicationModule.Instance.barrier();//Barrier
+                AirlineReplicationModule.Instance.updateMachineData(machines[myName]);
+                foreach (Seller prim in primaries)
+                {
+                    if (!machines[myName].primaryOf.Contains(prim.name)) primaries.Remove(prim);
+                }
 
-            foreach (Seller prim in backups)
-            {
-                if (!machines[myName].backsUp.Contains(prim.name)) backups.Remove(prim);
+                foreach (Seller prim in backups)
+                {
+                    if (!machines[myName].backsUp.Contains(prim.name)) backups.Remove(prim);
+                }
             }
         }
 
@@ -227,6 +226,22 @@ namespace AirlineServer
                     }
                 }
             }
+
+            lock (locker)
+            {
+                AirlineReplicationModule.Instance.barrier();//Barrier
+                AirlineReplicationModule.Instance.updateMachineData(machines[myName]);
+                foreach (Seller prim in primaries)
+                {
+                    if (!machines[myName].primaryOf.Contains(prim.name)) primaries.Remove(prim);
+                }
+
+                foreach (Seller prim in backups)
+                {
+                    if (!machines[myName].backsUp.Contains(prim.name)) backups.Remove(prim);
+                }
+            }
+
         }
         private Uri FindPrimaryOfSeller(string sellerName, Dictionary<string, ZNodesDataStructures.MachineNode> machines){
             foreach (string machineName in machines.Keys)
@@ -270,7 +285,7 @@ namespace AirlineServer
                         }
             }
 
-            Dictionary<string, ZNodesDataStructures.MachineNode> machines = null;// TODO: fix me Machines();
+            Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
             foreach (Seller seller in backups)
             {
                 if(sellersWhoLostPrimary.Contains(seller.name)){
@@ -292,25 +307,8 @@ namespace AirlineServer
                     
                 }
             }
-
-
-
-
-            // TODO: Update the tree
-
-            foreach (Seller prim in primaries)
-            {
-                if (!machines[myName].primaryOf.Contains(prim.name)) primaries.Remove(prim);
-            }
-
-            foreach (Seller prim in backups)
-            {
-                if (!machines[myName].backsUp.Contains(prim.name)) backups.Remove(prim);
-            }
-
-
-
-
+            
+            balanceTheTreeAfterLeft(machines,sellersWhoLostPrimary.Concat(sellersWhoLostBackup).ToList());
 
         }
 
