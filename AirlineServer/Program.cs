@@ -57,11 +57,33 @@ namespace AirlineServer
             return seller;
         }
 
+        static string readZooKeeperConfiguration(string filePath)
+        {
+            StreamReader reader = null;
+            string line = null;
+            try
+            {
+                reader = new StreamReader(filePath);
+                line = reader.ReadLine();
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                reader.Close();
+            }
+
+            return line;
+        }
+
         static string readZooKeeperAddress()
         {
             AppSettingsReader cnfg = new AppSettingsReader();
             string zkAddress = (string)cnfg.GetValue("ZooKeeperCNFG", typeof(string));
-            return zkAddress;
+
+            return readZooKeeperConfiguration(zkAddress);
         }
         /// <summary>
         /// Main :)
@@ -111,10 +133,11 @@ namespace AirlineServer
             string sellerAddress = @"http://localhost:" + args[2] + @"/SellerService";
 
            // Builder
+            AirlineReplicationModule.Instance.initialize(zkAddress, args[1], args[0], new Uri(intraClusterAddress));
             SellerService sa = new SellerService(lockObject);
-            //AirlineReplicationModule.Instance.initialize(zkAddress, args[1], args[0], new Uri(intraClusterAddress));
 
-            IntraClusterService ics = new IntraClusterService(seller, args[0], url, sellerAddress, args[1], lockObject);
+
+            IntraClusterService ics = new IntraClusterService(seller, AirlineReplicationModule.Instance.MachineName, url, sellerAddress, args[1], lockObject);
             try
             {
                 using (ServiceHost sellerHost = new ServiceHost(sa, new Uri(sellerAddress)))

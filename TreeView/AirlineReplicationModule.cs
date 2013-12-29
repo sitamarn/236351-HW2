@@ -482,6 +482,7 @@ namespace TreeViewLib
 
         internal void sellersNodeEvent(WatchedEvent @event)
         {
+            Console.WriteLine("Event type: " + @event.Type + " on " + @event.Path);
             Console.WriteLine("[" + MachineName + "] sellersNodeEvent event: " + @event.Type + " on " + @event.Path);
             setSellersChildrenWatcher();
         }
