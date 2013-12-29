@@ -28,9 +28,9 @@ namespace AirlineServer
             primaries = new List<Seller>();
             primaries.Add(initialSeller);
             backups = new List<Seller>();
-            
-            checkIfLeader();
             myName = name;
+            checkIfLeader();
+            
             mysearchServerAddress= searchServerAddress;
             myAddress = thisAddress;
             this.clusterName = clusterName;
@@ -54,7 +54,7 @@ namespace AirlineServer
         {
             var machines = AirlineReplicationModule.Instance.Machines;
             var keys = machines.Keys;
-            return isLeader = myName.Equals(keys);
+            return isLeader = myName.Equals(keys.Min());
         }
 
         public void respondIfNewNode(String machineName, String sellerName, Uri machine )

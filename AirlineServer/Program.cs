@@ -136,7 +136,7 @@ namespace AirlineServer
             AirlineReplicationModule.Instance.initialize(zkAddress, args[1], args[0], new Uri(intraClusterAddress));
             SellerService sa = new SellerService(lockObject);
 
-
+            AirlineReplicationModule.Instance.waitForNameRegister();
             IntraClusterService ics = new IntraClusterService(seller, AirlineReplicationModule.Instance.MachineName, url, sellerAddress, args[1], lockObject);
             try
             {
