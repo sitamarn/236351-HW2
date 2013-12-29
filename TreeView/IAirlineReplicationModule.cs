@@ -15,7 +15,7 @@ namespace TreeViewLib
         void updateMachineData(ZNodesDataStructures.MachineNode machineData);
 
         void barrier();
-
+        void waitForNameRegister();
         /// <summary>
         /// This function is called when a machine drops from the Zookeeper tree
         /// </summary>

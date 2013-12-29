@@ -117,6 +117,13 @@ namespace TreeViewLib
             initialize(address, clusterName, originalSeller, localService);
         }
 
+        private AutoResetEvent gotName = new AutoResetEvent(false);
+
+        public void waitForNameRegister()
+        {
+            gotName.WaitOne();
+        }
+
         public void initialize(String address, String clusterName, String originalSeller, Uri localService)
         {
             this.clusterName = clusterName;
@@ -293,6 +300,7 @@ namespace TreeViewLib
                 node.primaryOf.Add(originalSeller);
                 byte[] serializedNode = ZNodesDataStructures.serialize(node);
                 id = zk.Create(MachinesPath + "/" + MACHINE_PREFIX, serializedNode , Ids.OPEN_ACL_UNSAFE, CreateMode.EphemeralSequential);
+                gotName.Set();
             }
             catch (KeeperException e)
             {
