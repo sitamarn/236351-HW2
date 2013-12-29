@@ -17,25 +17,30 @@ namespace AirlineServer
         List<AirlineServer.Seller> primaries;
         List<AirlineServer.Seller> backups;
         bool isLeader  = false;
-        string myName;
+        string myName = null;
         string mysearchServerAddress;
         string myAddress;
         string clusterName;
         object locker;
 
-        public IntraClusterService(Seller initialSeller, string name, string searchServerAddress, string thisAddress, string clusterName, object lockObject)
+        public IntraClusterService(Seller initialSeller, string searchServerAddress, string thisAddress, string clusterName, object lockObject)
         {
             primaries = new List<Seller>();
             primaries.Add(initialSeller);
             backups = new List<Seller>();
-            myName = name;
-            checkIfLeader();
+            //checkIfLeader();
             
             mysearchServerAddress= searchServerAddress;
             myAddress = thisAddress;
             this.clusterName = clusterName;
             locker = lockObject;
         }
+
+        public void setName(string name)
+        {
+            myName = name;
+        }
+
 
         private List<string> getTheMostBusyMachineByPrimaries(Dictionary<string, ZNodesDataStructures.MachineNode> machines){
             //Dictionary<string, ZNodesDataStructures.MachineNode> machines = Machines();
@@ -65,8 +70,11 @@ namespace AirlineServer
 
             // in the ZK tree: If a machine holds a seller that has return to live - drop it!
             foreach(string smachine in machines.Keys){
+                if (!smachine.Equals(machineName))
+                {
                 machines[smachine].primaryOf.Remove(sellerName);
-                machines[smachine].backsUp.Remove(sellerName);   
+                machines[smachine].backsUp.Remove(sellerName);  
+                }
             }
 
             // in the local data: If a this machine holds an old version of the seller - drop it!!

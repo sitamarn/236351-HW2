@@ -114,7 +114,8 @@ namespace TreeViewLib
 
         public AirlineReplicationModule(String address, String clusterName, String originalSeller, Uri localService)
         {
-            initialize(address, clusterName, originalSeller, localService);
+            //initialize(address, clusterName, originalSeller, localService);
+            throw new NotImplementedException();
         }
 
         private AutoResetEvent gotName = new AutoResetEvent(false);
@@ -124,8 +125,10 @@ namespace TreeViewLib
             gotName.WaitOne();
         }
 
-        public void initialize(String address, String clusterName, String originalSeller, Uri localService)
+        public void initialize(String address, String clusterName, String originalSeller, Uri localService, MachineJoined mj, MachineDropped md)
         {
+            this.mJoined = mj;
+            this.mDropped = md;
             this.clusterName = clusterName;
             this.zookeeperAddress = address;
             this.originalSeller = originalSeller;

@@ -11,7 +11,7 @@ namespace TreeViewLib
     interface IAirlineReplicationModule
     {
 
-        void initialize(String address, String clusterName, String originalSeller, Uri localService);
+        void initialize(String address, String clusterName, String originalSeller, Uri localService, MachineJoined mj, MachineDropped md);
         void updateMachineData(ZNodesDataStructures.MachineNode machineData);
 
         void barrier();

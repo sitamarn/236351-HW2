@@ -133,11 +133,12 @@ namespace AirlineServer
             string sellerAddress = @"http://localhost:" + args[2] + @"/SellerService";
 
            // Builder
-            AirlineReplicationModule.Instance.initialize(zkAddress, args[1], args[0], new Uri(intraClusterAddress));
+            IntraClusterService ics = new IntraClusterService(seller, url, sellerAddress, args[1], lockObject);
+            AirlineReplicationModule.Instance.initialize(zkAddress, args[1], args[0], new Uri(intraClusterAddress), ics.respondIfNewNode, ics.respondIfSomeoneLeft);
             SellerService sa = new SellerService(lockObject);
-
+            
             AirlineReplicationModule.Instance.waitForNameRegister();
-            IntraClusterService ics = new IntraClusterService(seller, AirlineReplicationModule.Instance.MachineName, url, sellerAddress, args[1], lockObject);
+            ics.setName(AirlineReplicationModule.Instance.MachineName);
             try
             {
                 using (ServiceHost sellerHost = new ServiceHost(sa, new Uri(sellerAddress)))
