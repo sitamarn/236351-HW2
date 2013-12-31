@@ -478,35 +478,39 @@ namespace TreeViewLib
                 Console.WriteLine("["+MachineName+"] *WARNING* - dropped : " + String.Join(" ", machinesJoined.ToArray()));
             }
 
-            printRemoteAndLocalTree("PRE-CALLBACKS");
-
             if (!machinesJoined.IsEmpty())
             {
                 // 1. Add new nodes to tree
                 // 2. Run callback if exists
                 String joined = machinesJoined.First();
-                ZNodesDataStructures.MachineNode joinedData = zk.GetData<ZNodesDataStructures.MachineNode>(MachinesPath + "/" + joined, false);
+                ZNodesDataStructures.MachineNode joinedData = zk.GetData<ZNodesDataStructures.MachineNode>(MachinesPath + "/" + joined, new MachineNodeWatch(this)); // Set watch on new node
                 tree.addMachine(joined, joinedData);
+
                 if (null != mJoined)
                 {
+                    printRemoteAndLocalTree("PRE-CALLBACKS");
                     mJoined(joined, tree.Machines[joined].originalSellerName, tree.Machines[joined].uri);
+                    printRemoteAndLocalTree("POST-CALLBACKS");
                 }
             }
             if (!machinesDropped.IsEmpty())
             {
+                Console.WriteLine("["+MachineName+"] Machine dropped - " + String.Join(" ", machinesDropped));
+                // - Dropped clients should be dealt exclusively by the machineNodeChange callback and not here
+
                 // 1. Remove dropped machine from tree
                 // 2. Run callback if exists                
-                String dropped = machinesDropped.First();
-                ZNodesDataStructures.MachineNode droppedData = tree.Machines[dropped];
-                tree.removeMachine(dropped);
+                //String dropped = machinesDropped.First();
+                //ZNodesDataStructures.MachineNode droppedData = tree.Machines[dropped];
+                //tree.removeMachine(dropped);
 
-                if (null != mDropped)
-                {
-                    mDropped(droppedData.primaryOf, droppedData.backsUp);
-                }
+                //if (null != mDropped)
+                //{
+                //    mDropped(droppedData.primaryOf, droppedData.backsUp);
+                //}
             }
 
-            printRemoteAndLocalTree("POST-CALLBACKS");
+            
 
         }
 
