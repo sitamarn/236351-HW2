@@ -480,8 +480,16 @@ namespace TreeViewLib
             foreach (var seller in toJoin)
             {
                 ZNodesDataStructures.SellerNode sellerNode = new ZNodesDataStructures.SellerNode() 
-                    { role = machineRole, uri = machineUri, nodeId = id };
-                zk.Create(SellersPath + "/" + seller + "/" + machine, sellerNode, Ids.OPEN_ACL_UNSAFE, CreateMode.Ephemeral);
+                { role = machineRole, uri = machineUri, nodeId = id };
+                String machineSeller = SellersPath + "/" + seller + "/" + machine;
+                if (zk.Exists(machine, false))
+                {
+                    zk.SetData(machineSeller, sellerNode);
+                }
+                else
+                {
+                    zk.Create(machineSeller, sellerNode, Ids.OPEN_ACL_UNSAFE, CreateMode.Ephemeral);
+                }
             }
 
             foreach (var seller in toLeave)

@@ -517,6 +517,17 @@ namespace AirlineServer
                 }
                 Console.WriteLine();
             }
+            Console.WriteLine("my primaries: ");
+            foreach (Seller s in primaries)
+            {
+                Console.Write(s.name+", ");
+            }
+            Console.WriteLine();
+            Console.WriteLine("my backups: ");
+            foreach (Seller s in backups)
+            {
+                Console.Write(s.name + ", ");
+            }
         }
     }
 }

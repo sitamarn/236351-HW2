@@ -14,7 +14,6 @@ namespace TreeViewLib
         private ZooKeeper zk = null;
         
         private String synchPath = null;
-        private String synchReady = null;
         private String name = null;
         private String owner = null;
         private int size;
