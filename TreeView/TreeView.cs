@@ -28,6 +28,13 @@ namespace TreeViewLib
             get { return machinesData; }
         }
 
+        private Dictionary<String, Dictionary<ZNodesDataStructures.SellerNode.NodeRole, ZNodesDataStructures.SellerNode>> sellersData =
+            new Dictionary<string, Dictionary<ZNodesDataStructures.SellerNode.NodeRole, ZNodesDataStructures.SellerNode>>();
+
+        public Dictionary<String, Dictionary<ZNodesDataStructures.SellerNode.NodeRole, ZNodesDataStructures.SellerNode>> Sellers // Machines by their node name
+        {
+            get { return sellersData; }
+        }
 
         public List<String> MachinesNames
         {
@@ -44,36 +51,109 @@ namespace TreeViewLib
             this.machinesPath = machinesPath;
             this.sellersPath = sellersPath;
             this.zk = zk;
-        }
 
-        public void refresh() 
-        {
             var newMachinesView = zk.GetChildren(machinesPath, false);
             var newSellersView = zk.GetChildren(sellersPath, false);
 
-            machinesNames.Clear();
-            machinesNames.AddRange(newMachinesView);
-
-            sellersNames.Clear();
-            sellersNames.AddRange(newSellersView);
-
+            // Build machines tree from ZK
             machinesData.Clear();
-            machinesNames = machinesNames.Where(delegate(string elm, int index)
+            foreach (var machine in newMachinesView)
             {
-                bool predict = false;
-                try
+                var machineData = zk.GetData<ZNodesDataStructures.MachineNode>(machinesPath + "/" + machine, false);
+                machinesData.Add(machine, machineData);
+            }
+
+            // Build sellers tree from ZK
+            sellersData.Clear();
+            foreach (var seller in newSellersView)
+            {
+                var sellerMachines = zk.GetChildren(sellersPath + "/" + seller, false);
+                if (sellerMachines.Count > 2)
                 {
-                    var elmPath = machinesPath + "/" + elm;
-                    if (zk.Exists(elmPath))
-                    {
-                        ZNodesDataStructures.MachineNode data = zk.GetData<ZNodesDataStructures.MachineNode>(elmPath,false);
-                        machinesData.Add(elm, data);
-                        predict = true;
-                    }
+                    throw new Exception("Seller " + seller + " has too many machines: " + String.Join(" ", sellerMachines));
                 }
-                catch (Exception ex) { Console.WriteLine(elm + " was filtered from machiens because " + ex.Message); }
-                return predict;
-            }).ToList();
+
+                Dictionary<ZNodesDataStructures.SellerNode.NodeRole,ZNodesDataStructures.SellerNode> nodeRoles = new Dictionary<ZNodesDataStructures.SellerNode.NodeRole,ZNodesDataStructures.SellerNode>();
+                foreach(var machine in sellerMachines) {
+                    var machineSellerNode = zk.GetData <ZNodesDataStructures.SellerNode>(sellersPath + "/" + seller + "/" + machine, false);
+                    nodeRoles[machineSellerNode.role] = machineSellerNode;
+                }
+
+                //if (nodeRoles.Count != 2)
+                //{
+                //    throw new Exception("Seller " + seller + "doesn't have needed roles " + String.Join(" ", nodeRoles.Keys.ToArray()));
+                //}
+
+                sellersData[seller] = new Dictionary<ZNodesDataStructures.SellerNode.NodeRole, ZNodesDataStructures.SellerNode>(nodeRoles);
+            }
+        }
+
+        public void SetPrimaryOf(String seller, ZNodesDataStructures.SellerNode newPrimary)
+        {
+            if (sellersData.ContainsKey(seller))
+            {
+                if (sellersData[seller].ContainsKey(ZNodesDataStructures.SellerNode.NodeRole.Main))
+                {
+                    sellersData[seller][ZNodesDataStructures.SellerNode.NodeRole.Main] = newPrimary;
+                }
+                else
+                {
+                    sellersData[seller].Add(ZNodesDataStructures.SellerNode.NodeRole.Main,newPrimary);
+                }
+            }
+        }
+
+        public void SetBackupOf(String seller, ZNodesDataStructures.SellerNode newBackup)
+        {
+            if (sellersData.ContainsKey(seller))
+            {
+                if (sellersData[seller].ContainsKey(ZNodesDataStructures.SellerNode.NodeRole.Backup))
+                {
+                    sellersData[seller][ZNodesDataStructures.SellerNode.NodeRole.Backup] = newBackup;
+                }
+                else
+                {
+                    sellersData[seller].Add(ZNodesDataStructures.SellerNode.NodeRole.Backup, newBackup);
+                }
+            }
+        }
+
+        public void RemoveBackupOf(String seller, String machineName)
+        {
+            if (sellersData.ContainsKey(seller))
+            {
+                if (sellersData[seller].ContainsKey(ZNodesDataStructures.SellerNode.NodeRole.Backup))
+                {
+                    var machineRecord = sellersData[seller][ZNodesDataStructures.SellerNode.NodeRole.Backup];
+                    if (machineRecord != null)
+                    {
+                        if (machineRecord.machineName != machineName)
+                        {
+                            throw new Exception("Seller " + seller + " doesn't have " + machineName + " as backup, instead it has " + machineRecord.machineName);
+                        }
+                    }
+                    sellersData[seller][ZNodesDataStructures.SellerNode.NodeRole.Backup] = null;
+                }
+            }
+        }
+
+        public void RemovePrimaryOf(String seller, String machineName)
+        {
+            if (sellersData.ContainsKey(seller))
+            {
+                if (sellersData[seller].ContainsKey(ZNodesDataStructures.SellerNode.NodeRole.Main))
+                {
+                    var machineRecord = sellersData[seller][ZNodesDataStructures.SellerNode.NodeRole.Main];
+                    if (machineRecord != null)
+                    {
+                        if (machineRecord.machineName != machineName)
+                        {
+                            throw new Exception("Seller " + seller + " doesn't have " + machineName + " as backup, instead it has " + machineRecord.machineName);
+                        }
+                    }
+                    sellersData[seller][ZNodesDataStructures.SellerNode.NodeRole.Main] = null;
+                }
+            }
         }
 
         // Prints the tree without changing the tree view state
@@ -104,93 +184,59 @@ namespace TreeViewLib
             return sb.ToString();
         }
 
-        public ChildrenDiff update()
+
+        public ZNodesDataStructures.MachineNode updateMachine(String machineName, ZNodesDataStructures.MachineNode newData)
         {
-            ChildrenDiff cd = new ChildrenDiff();
-            var newMachinesView = zk.GetChildren(machinesPath, false);
-            //List<String> stillAlive = newMachinesView.Intersect(machinesNames).ToList();
-            cd.added = newMachinesView.Except(machinesNames).ToList();
-            cd.dropped = machinesNames.Except(newMachinesView).ToList();
-
-            Console.WriteLine("Old machines: " + String.Join(" ", machinesNames));
-            Console.WriteLine("New machines: " + String.Join(" ", newMachinesView));
-            Console.WriteLine("Considered dropped: " + String.Join(" ", cd.dropped));
-            Console.WriteLine("Considered added: " + String.Join(" ", cd.added));
-
-            foreach (var dropped in cd.dropped)
+            ZNodesDataStructures.MachineNode oldData = null;
+            if (!machinesData.ContainsKey(machineName))
             {
-                machinesData.Remove(dropped);
+                Console.WriteLine("*WARNING* Trying to update machine " + machineName + " which isn't contained in local view");
             }
-
-            updateMachineDataSelectively(cd.added);
-
-            machinesNames = newMachinesView;
-            return cd;
-        }
-
-        public void removeMachine(string machineName)
-        {
-            if(machinesNames.Contains(machineName)) 
-            {
-                machinesNames.Remove(machineName);
-                machinesData.Remove(machineName);
-            }
-        }
-
-        public ZNodesDataStructures.MachineNode getLocalMachineData(string machineName)
-        {
-            ZNodesDataStructures.MachineNode node = null;
             if (machinesData.ContainsKey(machineName))
             {
-                node = machinesData[machineName];
+                oldData = machinesData[machineName];
+                machinesData[machineName] = newData;
             }
-
-            return node;
-        }
-
-        /// <summary>
-        /// Updates machineName data record from zookeeper and returns the old data which was overwritten
-        /// </summary>
-        /// <param name="machineName"></param>
-        /// <returns></returns>
-        public ZNodesDataStructures.MachineNode updateMachineData(String machineName)
-        {
-            ZNodesDataStructures.MachineNode oldData = getLocalMachineData(machineName);
-            updateMachineDataSelectively(machineName);
             return oldData;
         }
 
-        private void updateMachineDataSelectively(List<String> machines)
+        public void addMachine(String machineName, ZNodesDataStructures.MachineNode newData)
         {
-            foreach(var machine in machines) 
+            if (machinesData.ContainsKey(machineName))
             {
-                updateMachineDataSelectively(machine);
+                Console.WriteLine("*WARNING* Trying to add machine " + machineName + " which is already contained in local view");
+                machinesData[machineName] = newData;
+            }
+            else
+            {
+                machinesData.Add(machineName, newData);
             }
         }
 
-        private void updateMachineDataSelectively(String machineName) 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="machineName"></param>
+        public void removeMachine(string machineName)
         {
-            try
+            if (machinesNames.Contains(machineName))
             {
-                var elmPath = machinesPath + "/" + machineName;
-                if (zk.Exists(elmPath))
-                {
-                    ZNodesDataStructures.MachineNode data = zk.GetData<ZNodesDataStructures.MachineNode>(elmPath, false);
-                    if(machinesData.ContainsKey(machineName)) 
-                    {
-                        machinesData[machineName] = data;
-                    } 
-                    else 
-                    {
-                        machinesData.Add(machineName, data);
-                    }
-                }
+                machinesData.Remove(machineName);
             }
-            catch (Exception ex) 
-            { 
-                Console.WriteLine("Failed fetching " + machineName + " data, ignoring update request");
-                Console.WriteLine(ex.Message);
+            else
+            {
+                Console.WriteLine("*WARNING* Trying to remove machine " + machineName + " which doesn't exist in local view");
             }
+        }
+
+
+        // 
+        public ChildrenDiff update(Dictionary<String, ZNodesDataStructures.MachineNode> newSnapshot)
+        {
+            ChildrenDiff cd = new ChildrenDiff();
+
+
+            return cd;
         }
 
         /// <summary>
@@ -210,30 +256,7 @@ namespace TreeViewLib
                 sb.AppendLine(machineName);
                 sb.AppendLine("   \\- P: " + String.Join(" ", machineRecord.primaryOf));
                 sb.AppendLine("   \\- B: " + String.Join(" ", machineRecord.backsUp));
-                //Console.WriteLine(record.Key + " - " record.Value.);
-                //record.Key
             }
-            
-
-            //List<String> machines = zk.GetChildren(machinesPath, false);
-            //sb.AppendLine("Machines: " + String.Join(" ", machines.ToArray()));
-
-            //List<String> sellers = zk.GetChildren(sellersPath, false);
-            //foreach (var seller in sellers)
-            //{
-            //    sb.Append("Seller " + seller + ":");
-            //    sb.AppendLine("{" + String.Join(",", zk.GetChildren(sellersPath + "/" + seller, false)) + "}");
-            //}
-
-
-
-            //sb.AppendLine("Remote tree view: ");
-            //sb.AppendLine("Machines: " + String.Join(" ", machinesNames.ToArray()));
-            //foreach (var seller in sellersNames)
-            //{
-            //    sb.Append("Seller " + seller + ":"); 
-            //    sb.AppendLine("["+String.Join(",", zk.GetChildren(sellersPath + "/" + seller, false))+"]");
-            //}
             return sb.ToString();
         }
     }

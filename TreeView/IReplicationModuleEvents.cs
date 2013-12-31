@@ -13,7 +13,6 @@ namespace TreeViewLib
 
     public interface IReplicationModuleEvents
     {
-        VersionRefresh VersionRefreshHandler { set; }
         MachineJoined MachineJoinedHandler { set; }
         MachineDropped MachineDroppedHandler { set; }
         LoadBalancingDone LoadBalancingDoneHandler { set; }

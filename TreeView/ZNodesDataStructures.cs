@@ -38,8 +38,18 @@ namespace TreeViewLib
 
             public int version;
             public Uri uri = null;
-            public String nodeId = null;
+            public String machineName = null;
             public NodeRole role = NodeRole.Main;
+
+            public SellerNode() { }
+
+            public SellerNode(SellerNode mainSeller)
+            {
+                version = mainSeller.version;
+                uri = new Uri(mainSeller.uri.AbsoluteUri);
+                machineName = mainSeller.machineName;
+                role = mainSeller.role;
+            }
         }
 
         public static byte[] serialize<T>(T sz)
