@@ -30,7 +30,7 @@ namespace TreeViewLib
         public static readonly string MACHINES_NODE = "machines";
         public static readonly string SELLERS_NODE = "sellers";
         public static readonly string BARRIER_NODE = "__barrier__";
-        public static readonly int SECONDS_TIMEOUT = 10000;
+        public static readonly int SECONDS_TIMEOUT = 120000;
         public static readonly int ZK_RETRIES = 5;
 
         private string clusterName;
@@ -39,7 +39,7 @@ namespace TreeViewLib
         private Uri intraClusterService = null;
         private TreeView tree = null;
 
-        private string id = null;
+        private string id = "NOT_UP_YET/NOT_UP_YET";
 
         public Dictionary<string, ZNodesDataStructures.MachineNode> Machines {
             get { return getMachines(); }

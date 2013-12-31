@@ -51,6 +51,7 @@ namespace TreeViewLib
 
         public void Enter()
         {
+            zk.GetChildren(synchPath, true);
             name =
                 zk.Create(synchPath + "/b",
                 new byte[0],
@@ -77,6 +78,7 @@ namespace TreeViewLib
 
         public bool Leave()
         {
+            zk.GetChildren(synchPath, true);
             zk.Delete(name, 0);
 
             while (true)

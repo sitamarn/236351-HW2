@@ -426,8 +426,8 @@ namespace AirlineServer
 
             print(machines);
 
-            lock (locker)
-            {
+            //lock (locker)
+           // {
                 Console.WriteLine("IN!!!!!!!!!!!!!!");
                 AirlineReplicationModule.Instance.barrier();//Barrier
                 Console.WriteLine("OUT!!!!!!!!!");
@@ -436,7 +436,7 @@ namespace AirlineServer
                 primaries.RemoveAll(delegate(Seller s) { return !machines[myName].primaryOf.Contains(s.name); });
 
                 backups.RemoveAll(delegate(Seller s) { return !machines[myName].backsUp.Contains(s.name); });
-            }
+          //  }
 
         }
 
