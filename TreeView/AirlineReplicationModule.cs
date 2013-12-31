@@ -538,11 +538,12 @@ namespace TreeViewLib
             set { mLBDone = value; }
         }
 
-        public void barrier() 
+        public ZKSynch barrier() 
         {
             int machines = zk.GetChildren(MachinesPath, false).Count();
-            Console.WriteLine("["+MachineName+"] Entering arrier for " + machines + " machines");
-            ZKSynch.ZKBarrier(zk, BarrierPath, id, machines);
+            //Console.WriteLine("["+MachineName+"] Entering arrier for " + machines + " machines");
+            ZKSynch barrier = ZKSynch.ZKBarrier(zk, BarrierPath, MachineName, machines); // Create and block barrier
+            return barrier;
         }
 
         public void testDie()

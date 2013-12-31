@@ -64,6 +64,8 @@ namespace AirlineServer
 
         public void respondIfNewNode(String machineName, String sellerName, Uri machine )
         {
+
+            ZKSynch barrier = AirlineReplicationModule.Instance.barrier(); //Barrier - Create, Enter, BLOCK -> Leave when Balancing ends
             // Get the cuurent snapshot of the system - including the new machine that came up!
             //not included the sellers that it holds.
             Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
@@ -182,10 +184,13 @@ namespace AirlineServer
             // this lock makes sure that no search server will serviced while sellers are removed from the machine.
             //lock (locker)
             //{
-                Console.WriteLine("IIIIIIIINNNNNNNN");
-                // barrier: in order to prevent losing replicas at same time that other machines asks for them
-                AirlineReplicationModule.Instance.barrier();//Barrier
-                Console.WriteLine("OOOOOOOOOUUUUUUUUUUTTTTTTTT");
+            Console.WriteLine("\t** BALANCING ALGORITHM FINISHED **");
+            barrier.Leave();
+            Console.WriteLine("\t** OOOOOOOOOUUUUUUUUUUTTTTTTTT");
+                //Console.WriteLine("IIIIIIIINNNNNNNN");
+                //// barrier: in order to prevent losing replicas at same time that other machines asks for them
+                //AirlineReplicationModule.Instance.barrier();//Barrier
+                //Console.WriteLine("OOOOOOOOOUUUUUUUUUUTTTTTTTT");
                 // update the ZK server!!
                 AirlineReplicationModule.Instance.updateMachineData(machines[myName]);
 

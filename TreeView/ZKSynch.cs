@@ -8,7 +8,7 @@ using ZooKeeperNet;
 
 namespace TreeViewLib
 {
-    class ZKSynch : IWatcher 
+    public class ZKSynch : IWatcher 
     {
         private readonly Object mutex = new Object();
         private ZooKeeper zk = null;
@@ -21,12 +21,11 @@ namespace TreeViewLib
 
         private AutoResetEvent connected = new AutoResetEvent(false);
 
-        public static void ZKBarrier(ZooKeeperWrapper handler, String synchNodePath, String owner, int size)
+        public static ZKSynch ZKBarrier(ZooKeeperWrapper handler, String synchNodePath, String owner, int size)
         {
             ZKSynch sZK = new ZKSynch(handler, synchNodePath, owner, size);
             sZK.Enter();
-            Console.WriteLine("^^^^^^^^^^^^^^");
-            sZK.Leave();
+            return sZK;
         }
 
 
@@ -51,25 +50,27 @@ namespace TreeViewLib
 
         public void Enter()
         {
+            Console.WriteLine("[" + owner + "] Barrier.Enter Starting");
             zk.GetChildren(synchPath, true);
             name =
-                zk.Create(synchPath + "/b",
+                zk.Create(synchPath + "/b_" + owner,
                 new byte[0],
                 Ids.OPEN_ACL_UNSAFE,
-                CreateMode.EphemeralSequential);    // Create a node for self
+                CreateMode.Ephemeral);    // Create a node for self
 
             while (true)
             {
                 lock (mutex)
                 {
                     var children = zk.GetChildren(synchPath, true);
-                    Console.WriteLine("Barrier children: " + String.Join(",",children.ToArray()) + " " + children.Count());
+                    Console.WriteLine("["+owner+"] Barrier children: " + String.Join(",",children.ToArray()) + " " + children.Count());
                     if (children.Count() < size)
                     {
                         System.Threading.Monitor.Wait(mutex);
                     }
                     else
                     {
+                        Console.WriteLine("[" + owner + "] Barrier.Enter Done");
                         return;
                     }
                 }
@@ -78,6 +79,7 @@ namespace TreeViewLib
 
         public bool Leave()
         {
+            Console.WriteLine("[" + owner + "] Barrier.Leave Starting");
             zk.GetChildren(synchPath, true);
             zk.Delete(name, 0);
 
@@ -92,6 +94,7 @@ namespace TreeViewLib
                     }
                     else
                     {
+                        Console.WriteLine("[" + owner + "] Barrier.Leave Done");
                         return true;
                     }
                 }
