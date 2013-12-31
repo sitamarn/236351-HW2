@@ -8,6 +8,7 @@ namespace TreeViewLib
 {
     public interface ITreeView
     {
+     //   static String PrintTree(ZooKeeperWrapper zk, String machinesPath, String sellersPath, String stamp);
         //Dictionary<string, Uri> Snapshot { get; }
 
         //Dictionary<string, ZNodesDataStructures.MachineNode> Machines { get; }

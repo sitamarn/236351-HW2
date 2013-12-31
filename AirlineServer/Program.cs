@@ -130,8 +130,8 @@ namespace AirlineServer
             }
 
             // Read arguments
-            string intraClusterAddress = @"http://192.168.0.2:" + args[3] + @"/IntraClusterService";
-            string sellerAddress = @"http://192.168.0.2:" + args[2] + @"/SellerService";
+            string intraClusterAddress = @"http://192.168.0.1:" + args[3] + @"/IntraClusterService";
+            string sellerAddress = @"http://192.168.0.1:" + args[2] + @"/SellerService";
 
            // Builder
             IntraClusterService ics = new IntraClusterService(seller, url, sellerAddress, args[1], lockObject);

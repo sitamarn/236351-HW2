@@ -41,6 +41,8 @@ namespace TreeViewLib
 
         private string id = "NOT_UP_YET/NOT_UP_YET";
 
+        private Dictionary<string, ZNodesDataStructures.MachineNode> calculatedSnapshot = null;
+
         public Dictionary<string, ZNodesDataStructures.MachineNode> Machines {
             get { return getMachines(); }
         }
@@ -160,14 +162,30 @@ namespace TreeViewLib
             
         }
 
-        public void updateMachineData(ZNodesDataStructures.MachineNode machineData)
+        public void updateMachineData(Dictionary<string, ZNodesDataStructures.MachineNode> snapshot)
         {
-            Stat s = zk.SetData(id, machineData);
+            calculatedSnapshot = snapshot; // TODO: remove this someday, (funny, huh ?)
+            foreach(var machine in snapshot) { // Update ALL but my record
+                if (machine.Key != MachineName)
+                {
+                    tree.Machines[machine.Key] = machine.Value;
+                }
+            }
+            Stat s = zk.SetData(id, snapshot[MachineName]); // Send update event 
             if (s == null)
             {
                 Console.WriteLine("Update machine data of " + id + " failed");
             }
         }
+
+        //public void updateMachineData(ZNodesDataStructures.MachineNode machineData)
+        //{
+        //    Stat s = zk.SetData(id, machineData);
+        //    if (s == null)
+        //    {
+        //        Console.WriteLine("Update machine data of " + id + " failed");
+        //    }
+        //}
 
         private Dictionary<string, ZNodesDataStructures.MachineNode> getMachines()
         {
@@ -404,13 +422,18 @@ namespace TreeViewLib
                     string newNode = cd.added.First();
                     var machineData = tree.getLocalMachineData(newNode);
                     mJoined(newNode, machineData.originalSellerName, machineData.uri);
+
+                    Console.WriteLine("["+MachineName+"] Refreshing tree and showing the results of JOIN CALLBACK:");
+                    Console.WriteLine(TreeView.PrintTree(zk, MachinesPath, SellersPath, MachineName));
+                    Console.WriteLine(tree.ToString());
+                    Console.WriteLine("-----------------------------------------------------------------------");
             }
         }
 
         internal void machineNodeChanged(WatchedEvent @event)
         {
-            //Console.WriteLine("machineNodeDataChanged event: " + @event.Type + " on " + @event.Path);
-            //Console.WriteLine("Event fired on " + id);
+            Console.WriteLine("["+MachineName+"] machineNodeDataChanged event: " + @event.Type + " on " + @event.Path);
+            Console.WriteLine("["+MachineName+"] Event fired on " + id);
             if (@event.Type == EventType.NodeDataChanged)
             {
                 if (@event.Path == id)
@@ -448,11 +471,18 @@ namespace TreeViewLib
                         {
                             String machineName = @event.Path.Substring(@event.Path.LastIndexOf('/') + 1);
                             ZNodesDataStructures.MachineNode machineData = tree.Machines[machineName];
+                            Console.WriteLine("[" + MachineName + "] MachineData of " + machineName + ": ");
+                            Console.WriteLine(machineData.ToString());
                             //tree.removeMachine(machineName);
                             if (mDropped != null)
                             {
                                 Console.WriteLine("["+MachineName+"] Calling machine dropped callback");
                                 mDropped(machineData.primaryOf, machineData.backsUp);
+
+                                Console.WriteLine("[" + MachineName + "] Refreshing tree and showing the results of DROPPED CALLBACK:");
+                                Console.WriteLine(TreeView.PrintTree(zk, MachinesPath, SellersPath, MachineName));
+                                Console.WriteLine(tree.ToString());
+                                Console.WriteLine("-----------------------------------------------------------------------");
                             }
                         }
                     }

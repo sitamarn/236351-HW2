@@ -192,7 +192,7 @@ namespace AirlineServer
                 //AirlineReplicationModule.Instance.barrier();//Barrier
                 //Console.WriteLine("OOOOOOOOOUUUUUUUUUUTTTTTTTT");
                 // update the ZK server!!
-                AirlineReplicationModule.Instance.updateMachineData(machines[myName]);
+                AirlineReplicationModule.Instance.updateMachineData(machines);
 
                 // update the primaries and backups lists
                 primaries.RemoveAll(delegate(Seller p) { return !machines[myName].primaryOf.Contains(p.name); });
@@ -437,7 +437,7 @@ namespace AirlineServer
                 Console.WriteLine("IN!!!!!!!!!!!!!!");
                 barrier.Leave();//Barrier
                 Console.WriteLine("OUT!!!!!!!!!");
-                AirlineReplicationModule.Instance.updateMachineData(machines[myName]);
+                AirlineReplicationModule.Instance.updateMachineData(machines);
 
                 primaries.RemoveAll(delegate(Seller s) { return !machines[myName].primaryOf.Contains(s.name); });
 

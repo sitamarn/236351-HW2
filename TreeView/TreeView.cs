@@ -23,7 +23,7 @@ namespace TreeViewLib
         private List<String> sellersNames = new List<String>();
 
         private Dictionary<String, ZNodesDataStructures.MachineNode> machinesData = new Dictionary<string,ZNodesDataStructures.MachineNode>();
-        public Dictionary<String, ZNodesDataStructures.MachineNode> Machines
+        public Dictionary<String, ZNodesDataStructures.MachineNode> Machines // Machines by their node name
         {
             get { return machinesData; }
         }
@@ -74,6 +74,34 @@ namespace TreeViewLib
                 catch (Exception ex) { Console.WriteLine(elm + " was filtered from machiens because " + ex.Message); }
                 return predict;
             }).ToList();
+        }
+
+        // Prints the tree without changing the tree view state
+        public static String PrintTree(ZooKeeperWrapper zk, String machinesPath, String sellersPath, String stamp)
+        {
+            StringBuilder sb = new StringBuilder();
+            List<String> machines = zk.GetChildren(machinesPath, true);
+            sb.AppendLine("["+stamp+"] Machines Tree: ");
+            foreach (var machine in machines)
+            {
+                var machineRecord = zk.GetData<ZNodesDataStructures.MachineNode>(machinesPath + "/" + machine, true);
+                sb.AppendLine("["+stamp+"] \\-" + machine);
+                sb.AppendLine("["+stamp+"]       \\-P: " + String.Join(" ", machineRecord.primaryOf));
+                sb.AppendLine("["+stamp+"]       \\-B: " + String.Join(" ", machineRecord.backsUp)); 
+            }
+            sb.AppendLine("[" + stamp + "] Sellers Tree: ");
+            List<String> sellers = zk.GetChildren(sellersPath, true);
+            foreach (var seller in sellers)
+            {
+                sb.AppendLine("["+stamp+"] \\-" + seller);
+                var sellerMachines = zk.GetChildren(sellersPath + "/" + seller,true);
+                foreach (var sellerMachine in sellerMachines)
+                {
+                    var machineSellerRecord = zk.GetData<ZNodesDataStructures.SellerNode>(sellersPath + "/" + seller + "/" + sellerMachine,true);
+                    sb.AppendLine("[" + stamp + "]       \\-"+machineSellerRecord.role+": " + sellerMachine+ " " + machineSellerRecord.uri);
+                }
+            }
+            return sb.ToString();
         }
 
         public ChildrenDiff update()
@@ -175,25 +203,37 @@ namespace TreeViewLib
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("=============================================================");
             sb.AppendLine("Local tree view: ");
-            List<String> machines = zk.GetChildren(machinesPath, false);
-            sb.AppendLine("Machines: " + String.Join(" ", machines.ToArray()));
-
-            List<String> sellers = zk.GetChildren(sellersPath, false);
-            foreach (var seller in sellers)
+            foreach (var record in machinesData)
             {
-                sb.Append("Seller " + seller + ":");
-                sb.AppendLine("{" + String.Join(",", zk.GetChildren(sellersPath + "/" + seller, false)) + "}");
+                var machineName = record.Key;
+                var machineRecord = record.Value;
+                sb.AppendLine(machineName);
+                sb.AppendLine("   \\- P: " + String.Join(" ", machineRecord.primaryOf));
+                sb.AppendLine("   \\- B: " + String.Join(" ", machineRecord.backsUp));
+                //Console.WriteLine(record.Key + " - " record.Value.);
+                //record.Key
             }
+            
+
+            //List<String> machines = zk.GetChildren(machinesPath, false);
+            //sb.AppendLine("Machines: " + String.Join(" ", machines.ToArray()));
+
+            //List<String> sellers = zk.GetChildren(sellersPath, false);
+            //foreach (var seller in sellers)
+            //{
+            //    sb.Append("Seller " + seller + ":");
+            //    sb.AppendLine("{" + String.Join(",", zk.GetChildren(sellersPath + "/" + seller, false)) + "}");
+            //}
 
 
 
-            sb.AppendLine("Remote tree view: ");
-            sb.AppendLine("Machines: " + String.Join(" ", machinesNames.ToArray()));
-            foreach (var seller in sellersNames)
-            {
-                sb.Append("Seller " + seller + ":"); 
-                sb.AppendLine("["+String.Join(",", zk.GetChildren(sellersPath + "/" + seller, false))+"]");
-            }
+            //sb.AppendLine("Remote tree view: ");
+            //sb.AppendLine("Machines: " + String.Join(" ", machinesNames.ToArray()));
+            //foreach (var seller in sellersNames)
+            //{
+            //    sb.Append("Seller " + seller + ":"); 
+            //    sb.AppendLine("["+String.Join(",", zk.GetChildren(sellersPath + "/" + seller, false))+"]");
+            //}
             return sb.ToString();
         }
     }

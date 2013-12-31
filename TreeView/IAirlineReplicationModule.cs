@@ -12,8 +12,9 @@ namespace TreeViewLib
     {
 
         void initialize(String address, String clusterName, String originalSeller, Uri localService, MachineJoined mj, MachineDropped md);
-        void updateMachineData(ZNodesDataStructures.MachineNode machineData);
-
+        //void updateMachineData(ZNodesDataStructures.MachineNode machineData);
+        void updateMachineData(Dictionary<string, ZNodesDataStructures.MachineNode> snapshot);
+        
         ZKSynch barrier();
         void waitForNameRegister();
         /// <summary>
