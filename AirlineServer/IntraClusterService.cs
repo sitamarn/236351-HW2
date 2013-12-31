@@ -180,8 +180,8 @@ namespace AirlineServer
             }
             print(machines);
             // this lock makes sure that no search server will serviced while sellers are removed from the machine.
-            lock (locker)
-            {
+            //lock (locker)
+            //{
                 Console.WriteLine("IIIIIIIINNNNNNNN");
                 // barrier: in order to prevent losing replicas at same time that other machines asks for them
                 AirlineReplicationModule.Instance.barrier();//Barrier
@@ -193,7 +193,7 @@ namespace AirlineServer
                 primaries.RemoveAll(delegate(Seller p) { return !machines[myName].primaryOf.Contains(p.name); });
 
                 backups.RemoveAll(delegate(Seller p) { return !machines[myName].backsUp.Contains(p.name); });
-            }
+           // }
 
         }
         
