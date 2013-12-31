@@ -362,6 +362,7 @@ namespace AirlineServer
         }
         public void respondIfSomeoneLeft(List<String> sellersWhoLostPrimary, List<String> sellersWhoLostBackup)
         {
+            ZKSynch barrier = AirlineReplicationModule.Instance.barrier();
             // If this machine is a leader: register as a delegate
             if (checkIfLeader())
             {
@@ -434,7 +435,7 @@ namespace AirlineServer
             //lock (locker)
            // {
                 Console.WriteLine("IN!!!!!!!!!!!!!!");
-                AirlineReplicationModule.Instance.barrier();//Barrier
+                barrier.Leave();//Barrier
                 Console.WriteLine("OUT!!!!!!!!!");
                 AirlineReplicationModule.Instance.updateMachineData(machines[myName]);
 
