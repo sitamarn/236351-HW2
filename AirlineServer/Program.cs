@@ -85,6 +85,7 @@ namespace AirlineServer
 
             return readZooKeeperConfiguration(zkAddress);
         }
+
         /// <summary>
         /// Main :)
         /// </summary>
@@ -155,9 +156,11 @@ namespace AirlineServer
                         Ismb.HttpGetEnabled = true;
                         sellerHost.Description.Behaviors.Add(Ismb);
                         sellerHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode = InstanceContextMode.Single;
+                        sellerHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().IncludeExceptionDetailInFaults = true;
                         intraHost.Description.Behaviors.Add(Ismb);
+                        //intraHost.Description.Behaviors.Add(new ServiceDebugBehavior() { IncludeExceptionDetailInFaults = true });
                         intraHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode = InstanceContextMode.Single;
-                        
+                        intraHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().IncludeExceptionDetailInFaults = true;
                         
                         // Open the service
                         sellerHost.Open();

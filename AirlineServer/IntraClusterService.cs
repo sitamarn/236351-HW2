@@ -93,7 +93,35 @@ namespace AirlineServer
             //machines[sellerName].primaryOf.Add(sellerName);
 
             // If there is only a single machine there is no need to backup the seller and load balancing
-            if (machines.Count > 1)
+            if (machines.Count == 1)
+            {
+                try
+                {
+                   // WebChannelFactory<IAirSellerRegisteration> cf = new WebChannelFactory<IAirSellerRegisteration>(new Uri(mysearchServerAddress));
+                   // IAirSellerRegisteration registerChannel = cf.CreateChannel();
+                    // Register the channel in the server
+                    //registerChannel.RegisterSeller(new Uri(myAddress), clusterName);
+                }
+                catch (ProtocolException e)
+                {
+                    Console.WriteLine("Bad Protocol: " + e.Message);
+                }
+                catch (Exception e)
+                {
+
+                    if (e.InnerException is WebException)
+                    {
+                        HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
+                        Console.WriteLine("Failed, {0}", resp.StatusDescription);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Advertisement connection kicked the bucket, quitting because:");
+                        Console.WriteLine(e.Message.ToString());
+                    }
+                    return;
+                }
+            }else
             {
                 // if there are 2 machines - it means that before the current machine has joined there were no backups!
                 if (machines.Count == 2)
@@ -102,22 +130,31 @@ namespace AirlineServer
                     {
                         return !str.Equals(machineName);
                     }).First();
-                    foreach (string sell in machines[oldMachine].primaryOf)
+                    foreach (string mac in machines.Keys)
                     {
-                        machines[oldMachine].primaryOf.Remove(sell);
-                        machines[myName].backsUp.Remove(sell);   
-                        if (oldMachine.Equals(myName))
+                        if (!mac.Equals(myName))
                         {
-                            ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(machines[machineName].uri));
-                            using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                            foreach (string sell in machines[mac].primaryOf)
                             {
-                                ISellerClusterService sellerCluster = httpFactory.CreateChannel();
-                                Seller sellerToBackup = sellerCluster.sendPrimarySeller(sellerName);
-                                backups.Add(sellerToBackup);
+                                ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(machines[mac].uri));
+                                using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                                {
+                                    Console.WriteLine("uri: {0}, machine Name: [{1}]", machines[mac].uri, machineName);
+                                    ISellerClusterService sellerCluster = httpFactory.CreateChannel();
+                                    Seller sellerToBackup = sellerCluster.sendPrimarySeller(sell);
+                                    backups.Add(sellerToBackup);
+                                }
                             }
+
                         }
                     }
-
+                    if (!myName.Equals(oldMachine))
+                    {
+                        foreach (string s in machines[oldMachine].primaryOf)
+                        {
+                            machines[myName].backsUp.Add(s);
+                        }
+                    }
                 }
                 // find a deterministic victim to hold the backup of the new seller
                 string victim = (from p in machines where !p.Key.Equals(sellerName) orderby p.Value.primaryOf.Count ascending, p.Key ascending select p.Key).First();
@@ -145,22 +182,17 @@ namespace AirlineServer
             // this lock makes sure that no search server will serviced while sellers are removed from the machine.
             lock (locker)
             {
+                Console.WriteLine("IIIIIIIINNNNNNNN");
                 // barrier: in order to prevent losing replicas at same time that other machines asks for them
                 AirlineReplicationModule.Instance.barrier();//Barrier
-
+                Console.WriteLine("OOOOOOOOOUUUUUUUUUUTTTTTTTT");
                 // update the ZK server!!
                 AirlineReplicationModule.Instance.updateMachineData(machines[myName]);
 
                 // update the primaries and backups lists
-                foreach (Seller prim in primaries)
-                {
-                    if (!machines[myName].primaryOf.Contains(prim.name)) primaries.Remove(prim);
-                }
+                primaries.RemoveAll(delegate(Seller p) { return !machines[myName].primaryOf.Contains(p.name); });
 
-                foreach (Seller prim in backups)
-                {
-                    if (!machines[myName].backsUp.Contains(prim.name)) backups.Remove(prim);
-                }
+                backups.RemoveAll(delegate(Seller p) { return !machines[myName].backsUp.Contains(p.name); });
             }
 
         }
@@ -175,14 +207,14 @@ namespace AirlineServer
                 averageP += machines[mac].primaryOf.Count;
                 averageB += machines[mac].backsUp.Count;
             }
-            averageP = Convert.ToInt32(Math.Floor(Convert.ToDecimal(averageP) / machines.Count));
-            averageB = Convert.ToInt32(Math.Floor(Convert.ToDecimal(averageB) / machines.Count));
+            averageP = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(averageP) / machines.Count));
+            averageB = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(averageB) / machines.Count));
 
             // this phase handle the primary replicas of sellers in each machine:
             foreach(string busyMachine in getTheMostBusyMachineByPrimaries(machines)){
                 
                 //if the machine has too many primaries
-                while(machines[busyMachine].primaryOf.Count > 1+ averageP){
+                while(machines[busyMachine].primaryOf.Count >  averageP){
                     // choose a seller in a deterministic way and pass it on
                     machines[busyMachine].primaryOf.Sort();
                     string primaryToTransfer = machines[busyMachine].primaryOf.First();
@@ -207,7 +239,7 @@ namespace AirlineServer
             // this phase handle the backup replicas of sellers in each machine:
             // this phase works the same as the above BUT there is 1 constrain.
             foreach(string busyMachine in getTheMostBusyMachineByBackups(machines)){
-                while(machines[busyMachine].backsUp.Count > 1+ averageB){
+                while(machines[busyMachine].backsUp.Count >  averageB){
                     // sort the backups in  a deterministic (stable) way - but thow out
                     // the sellers that the new machine owns as primary
                     List<string> busyMachinesBackups = new List<string>(machines[busyMachine].backsUp).Except(machines[joinedMachine].primaryOf).ToList();
@@ -240,8 +272,8 @@ namespace AirlineServer
                 averageP += machines[mac].primaryOf.Count;
                 averageB += machines[mac].backsUp.Count;
             }
-            averageP = Convert.ToInt32(Math.Floor(Convert.ToDecimal(averageP) / machines.Count));
-            averageB = Convert.ToInt32(Math.Floor(Convert.ToDecimal(averageB) / machines.Count));
+            averageP = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(averageP) / machines.Count));
+            averageB = Convert.ToInt32(Math.Ceiling((Convert.ToDecimal(averageB) + backupsToAssign.Count) / machines.Count));
 
             // we want a deterministic list of the machines order by their availability
             // so we reverese the list
@@ -251,7 +283,7 @@ namespace AirlineServer
 
             foreach (string busyMachine in getTheMostBusyMachineByPrimaries(machines))
             {
-                while (machines[busyMachine].primaryOf.Count > 1 + averageP)
+                while (machines[busyMachine].primaryOf.Count >  averageP)
                 {
                     machines[busyMachine].primaryOf.Sort();
                     string primaryToTransfer = machines[busyMachine].primaryOf.First();
@@ -285,9 +317,10 @@ namespace AirlineServer
             backupsToAssign.Sort();
             foreach (string backupToAssign in backupsToAssign)
             {
+                bool isSet = false;
                 foreach (string idleMachine in idles)
                 {
-                    while (machines[idleMachine].backsUp.Count < 1 + averageB && !machines[idleMachine].primaryOf.Contains(backupToAssign))
+                    while (machines[idleMachine].backsUp.Count < averageB && !machines[idleMachine].primaryOf.Contains(backupToAssign))
                     {
 
                         //machines[busyMachine].backsUp.Remove(BackupToTransfer);
@@ -304,7 +337,10 @@ namespace AirlineServer
                                 primaries.Add(sellerToBackup);
                             }
                         }
+                        isSet = true;
+                        break;
                     }
+                    if (isSet) break;
                 }
             }
 
@@ -326,10 +362,10 @@ namespace AirlineServer
             {
                       try
                         {
-                            WebChannelFactory<IAirSellerRegisteration> cf = new WebChannelFactory<IAirSellerRegisteration>(new Uri(mysearchServerAddress));
-                            IAirSellerRegisteration registerChannel = cf.CreateChannel();
+                           // WebChannelFactory<IAirSellerRegisteration> cf = new WebChannelFactory<IAirSellerRegisteration>(new Uri(mysearchServerAddress));
+                          //  IAirSellerRegisteration registerChannel = cf.CreateChannel();
                             // Register the channel in the server
-                            registerChannel.RegisterSeller(new Uri(myAddress), clusterName);
+                          //  registerChannel.RegisterSeller(new Uri(myAddress), clusterName);
                         }
                         catch (ProtocolException e)
                         {
@@ -356,26 +392,25 @@ namespace AirlineServer
             Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
 
             // if a primary seller fall - raise the backup immediately
-            foreach (Seller seller in backups)
-            {
-                if(sellersWhoLostPrimary.Contains(seller.name)){
-                    setMachineAsPrimary(seller.name);
-                }
-            }
+
+             
+               setMachineAsPrimary(sellersWhoLostPrimary);
+                
+            
 
             // Update it in the ZK tree
             foreach (string m in machines.Keys)
             {
-
                 foreach (string seller in machines[m].backsUp)
                 {
                     if (sellersWhoLostPrimary.Contains(seller))
                     {
                         machines[m].primaryOf.Add(seller);
-                        machines[m].backsUp.Remove(seller);
-                    }
-                    
+
+                    }                   
                 }
+
+                machines[m].backsUp.RemoveAll(delegate(string s) { return sellersWhoLostPrimary.Contains(s); });
             }
 
             // relevant only if there are more than 1 machine
@@ -384,34 +419,33 @@ namespace AirlineServer
                 // execute a deterministic load-balancing algorithm - and also fill the machines with backup nodes 
                 balanceTheTreeAfterLeft(machines, sellersWhoLostPrimary.Concat(sellersWhoLostBackup).ToList());
             }
+            else
+            {
+                
+            }
 
             lock (locker)
             {
+                Console.WriteLine("IN!!!!!!!!!!!!!!");
                 AirlineReplicationModule.Instance.barrier();//Barrier
+                Console.WriteLine("OUT!!!!!!!!!");
                 AirlineReplicationModule.Instance.updateMachineData(machines[myName]);
-                foreach (Seller prim in primaries)
-                {
-                    if (!machines[myName].primaryOf.Contains(prim.name)) primaries.Remove(prim);
-                }
 
-                foreach (Seller prim in backups)
-                {
-                    if (!machines[myName].backsUp.Contains(prim.name)) backups.Remove(prim);
-                }
+                primaries.RemoveAll(delegate(Seller s) { return !machines[myName].primaryOf.Contains(s.name); });
+
+                backups.RemoveAll(delegate(Seller s) { return !machines[myName].backsUp.Contains(s.name); });
             }
 
         }
 
-        private void setMachineAsPrimary(string sellerName)
+        private void setMachineAsPrimary(List<string> sellerNames)
         {
-            foreach (AirlineServer.Seller backup in backups)
+                      // Update it in the ZK tree
+            foreach (Seller m in backups)
             {
-                if (backup.name.Equals(sellerName))
-                {
-                    primaries.Add(backup);
-                    backups.Remove(backup);
-                }
+                if (sellerNames.Contains(m.name)) primaries.Add(m);
             }
+                backups.RemoveAll(delegate(Seller s) { return sellerNames.Contains(s.name); });
         }
 
 
@@ -449,6 +483,7 @@ namespace AirlineServer
 
         public Seller sendPrimarySeller(string sellerName)
         {
+            
             return primaries.Where(delegate(Seller s) { return s.name.Equals(sellerName); }).First();
         }
 

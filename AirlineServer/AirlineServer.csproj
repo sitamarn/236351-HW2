@@ -47,13 +47,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="InterClusterLogic.cs" />
+    <Compile Include="CacheData.cs" />
+    <Compile Include="ExOpBehavior.cs" />
     <Compile Include="IAirSellerRegisteration.cs" />
     <Compile Include="IntraClusterService.cs" />
-    <Compile Include="IReplicatedSeller.cs" />
     <Compile Include="ISellerClusterService.cs" />
     <Compile Include="ISellerService.cs" />
-    <Compile Include="LeaderLogic.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SellerService.cs" />

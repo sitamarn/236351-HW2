@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using ZooKeeperNet;
 
@@ -109,7 +110,7 @@ namespace TreeViewLib
                replicationModule.sellersNodeEvent(@event);
             }
         }
-
+         
         public AirlineReplicationModule() { }
 
         public AirlineReplicationModule(String address, String clusterName, String originalSeller, Uri localService)
@@ -394,17 +395,15 @@ namespace TreeViewLib
                 zk.GetData<ZNodesDataStructures.MachineNode>(MachinesPath + "/" + newNode, new MachineNodeWatch(this));
             }
             // Callback function 
-            if (mJoined != null)
+            if (mJoined != null && !cd.added.IsEmpty())
             {
                 // Assuming only 1 change can happen per event
                 int numMachines = zk.GetChildren(MachinesPath, false).Count();
         
-                if (mJoined != null)
-                {
+
                     string newNode = cd.added.First();
                     var machineData = tree.getLocalMachineData(newNode);
                     mJoined(newNode, machineData.originalSellerName, machineData.uri);
-                }
             }
         }
 
@@ -449,7 +448,7 @@ namespace TreeViewLib
                         {
                             String machineName = @event.Path.Substring(@event.Path.LastIndexOf('/') + 1);
                             ZNodesDataStructures.MachineNode machineData = tree.Machines[machineName];
-                            tree.removeMachine(machineName);
+                            //tree.removeMachine(machineName);
                             if (mDropped != null)
                             {
                                 Console.WriteLine("["+MachineName+"] Calling machine dropped callback");
@@ -494,7 +493,7 @@ namespace TreeViewLib
         internal void sellersNodeEvent(WatchedEvent @event)
         {
             Console.WriteLine("Event type: " + @event.Type + " on " + @event.Path);
-            Console.WriteLine("[" + MachineName + "] sellersNodeEvent event: " + @event.Type + " on " + @event.Path);
+            //Console.WriteLine("[" + MachineName + "] sellersNodeEvent event: " + @event.Type + " on " + @event.Path);
             setSellersChildrenWatcher();
         }
 

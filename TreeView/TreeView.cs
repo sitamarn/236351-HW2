@@ -31,7 +31,7 @@ namespace TreeViewLib
 
         public List<String> MachinesNames
         {
-            get { return machinesNames; }
+            get { return new List<String>(machinesNames); }
         }
 
         public List<String> SellersNames
@@ -84,10 +84,10 @@ namespace TreeViewLib
             cd.added = newMachinesView.Except(machinesNames).ToList();
             cd.dropped = machinesNames.Except(newMachinesView).ToList();
 
-            //Console.WriteLine("Old machines: " + String.Join(" ",machinesNames));
-            //Console.WriteLine("New machines: " + String.Join(" ", newMachinesView));
-            //Console.WriteLine("Considered dropped: " + String.Join(" ", cd.dropped));
-            //Console.WriteLine("Considered added: " + String.Join(" ", cd.added));
+            Console.WriteLine("Old machines: " + String.Join(" ", machinesNames));
+            Console.WriteLine("New machines: " + String.Join(" ", newMachinesView));
+            Console.WriteLine("Considered dropped: " + String.Join(" ", cd.dropped));
+            Console.WriteLine("Considered added: " + String.Join(" ", cd.added));
 
             foreach (var dropped in cd.dropped)
             {

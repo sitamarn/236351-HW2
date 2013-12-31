@@ -62,6 +62,7 @@ namespace TreeViewLib
                 lock (mutex)
                 {
                     var children = zk.GetChildren(synchPath, true);
+                    Console.WriteLine("Barrier children: " + String.Join(",",children.ToArray()) + " " + children.Count());
                     if (children.Count() < size)
                     {
                         System.Threading.Monitor.Wait(mutex);
