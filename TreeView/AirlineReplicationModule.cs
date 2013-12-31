@@ -221,7 +221,7 @@ namespace TreeViewLib
                     }
                 }
 
-                foreach (var bToAdd in addPrimaries)
+                foreach (var bToAdd in addBackup)
                 {
                     ZNodesDataStructures.SellerNode primaryRecord = new ZNodesDataStructures.SellerNode()
                     {
@@ -237,9 +237,9 @@ namespace TreeViewLib
                     }
                 }
 
-                foreach (var bToRemove in removePrimaries)
+                foreach (var bToRemove in removeBackup)
                 {
-                    tree.RemoveBackupOf(bToRemove, MachineName);
+                    tree.RemoveBackupOf(bToRemove, machine.Key);
                     if (updateZKTree)
                     {
                         zk.Delete(SellersPath + "/" + bToRemove + "/" + machine.Key);
