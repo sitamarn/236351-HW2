@@ -178,7 +178,7 @@ namespace AirlineServer
                 // execute a deterministic load-balancing algorithm
                 balanceTheTreeAfterJoined(machines, machineName, machine);
             }
-
+            print(machines);
             // this lock makes sure that no search server will serviced while sellers are removed from the machine.
             lock (locker)
             {
@@ -424,6 +424,8 @@ namespace AirlineServer
                 
             }
 
+            print(machines);
+
             lock (locker)
             {
                 Console.WriteLine("IN!!!!!!!!!!!!!!");
@@ -490,6 +492,26 @@ namespace AirlineServer
         public Seller sendBackupSeller(string sellerName)
         {
             return backups.Where(delegate(Seller s) { return s.name.Equals(sellerName); }).First();
+        }
+
+        public void print(Dictionary<string, ZNodesDataStructures.MachineNode> machines)
+        {
+            foreach (string k in machines.Keys)
+            {
+                Console.WriteLine(k+": ");
+                Console.Write("primaries: ");
+                foreach (string pr in machines[k].primaryOf)
+                {
+                    Console.Write(pr+", ");
+                }
+                Console.WriteLine();
+                Console.Write("backups: ");
+                foreach (string ba in machines[k].backsUp)
+                {
+                    Console.Write(ba + ", ");
+                }
+                Console.WriteLine();
+            }
         }
     }
 }
