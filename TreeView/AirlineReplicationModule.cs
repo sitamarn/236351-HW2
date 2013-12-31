@@ -482,7 +482,7 @@ namespace TreeViewLib
                 ZNodesDataStructures.SellerNode sellerNode = new ZNodesDataStructures.SellerNode() 
                 { role = machineRole, uri = machineUri, nodeId = id };
                 String machineSeller = SellersPath + "/" + seller + "/" + machine;
-                if (zk.Exists(machine, false))
+                if (zk.Exists(machineSeller, false))
                 {
                     zk.SetData(machineSeller, sellerNode);
                 }
