@@ -59,7 +59,9 @@ namespace AirlineServer
         {
             var machines = AirlineReplicationModule.Instance.Machines;
             var keys = machines.Keys;
-            return isLeader = myName.Equals(keys.Min());
+
+            isLeader = myName.Equals(keys.Min());
+            return isLeader;
         }
 
         public void respondIfNewNode(String machineName, String sellerName, Uri machine )
@@ -296,6 +298,12 @@ namespace AirlineServer
                     // if this machine is the new joined machine - follow the order
                     if(joinedMachine.Equals(myName)){
                         Uri uri = FindPrimaryOfSeller(primaryToTransfer);
+                        Console.WriteLine( "Printing uri of machine: " );
+                        Console.WriteLine(uri);
+                        Console.WriteLine(uri.ToString());
+                        Console.WriteLine(uri.Host);
+                        Console.WriteLine(uri.AbsoluteUri);
+                        Console.WriteLine("----------------------------------------------");
                         try
                         {
                             ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),
@@ -304,6 +312,7 @@ namespace AirlineServer
                             {
                                 ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                                 Seller sellerToPrimary = sellerCluster.sendPrimarySeller(primaryToTransfer);
+                                if (sellerToPrimary == null) { sellerToPrimary = sellerCluster.sendBackupSeller(primaryToTransfer); }
                                 primaries.Add(sellerToPrimary);
                             }
                         }
@@ -419,7 +428,7 @@ namespace AirlineServer
                     string victim = null;
                     foreach (string idle in reverseBusy)
                     {
-                        if (/*machines[idle].primaryOf.Count < averageP+1 && */!machines[idle].backsUp.Contains(primaryToTransfer))
+                        if (!idle.Equals(busyMachine) && !machines[idle].backsUp.Contains(primaryToTransfer))
                         {
                             victim = idle;
                             break;
@@ -482,6 +491,7 @@ namespace AirlineServer
             {
                 if (machines[machineName].primaryOf.Contains(sellerName) && !machineName.Equals(myName))
                 {
+                    
                     return machines[machineName].uri;
                 }
             }

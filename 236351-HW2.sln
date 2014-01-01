@@ -9,8 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AirlineServer", "AirlineSer
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TreeView", "TreeView\TreeView.csproj", "{856234D7-5524-4E4C-B9F4-33EE0EF3E59D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TreeViewTest", "TreeViewTest\TreeViewTest.csproj", "{D7120FC5-87ED-490A-A4DC-FF14855637DD}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,16 +61,6 @@ Global
 		{856234D7-5524-4E4C-B9F4-33EE0EF3E59D}.Release|ARM.ActiveCfg = Release|Any CPU
 		{856234D7-5524-4E4C-B9F4-33EE0EF3E59D}.Release|x64.ActiveCfg = Release|Any CPU
 		{856234D7-5524-4E4C-B9F4-33EE0EF3E59D}.Release|x86.ActiveCfg = Release|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Debug|ARM.ActiveCfg = Debug|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Release|ARM.ActiveCfg = Release|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Release|x64.ActiveCfg = Release|Any CPU
-		{D7120FC5-87ED-490A-A4DC-FF14855637DD}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
