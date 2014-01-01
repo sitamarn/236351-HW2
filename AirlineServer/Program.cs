@@ -129,9 +129,16 @@ namespace AirlineServer
                 return;
             }
 
+            // TODO: remove this
+            String ip = "192.168.0.2";
+            if (args[5].StartsWith(@"c:\"))
+            {
+                ip = "192.168.0.1";
+            }
+
             // Read arguments
-            string intraClusterAddress = @"http://192.168.0.2:" + args[3] + @"/IntraClusterService";
-            string sellerAddress = @"http://192.168.0.2:" + args[2] + @"/SellerService";
+            string intraClusterAddress = @"http://"+ip+":" + args[3] + @"/IntraClusterService";
+            string sellerAddress = @"http://"+ip+":" + args[2] + @"/SellerService";
 
            // Builder
             IntraClusterService ics = new IntraClusterService(seller, url, sellerAddress, args[1], lockObject);
