@@ -81,13 +81,22 @@ namespace AirlineServer
             Console.WriteLine(83);
             // in the local data: If a this machine holds an old version of the seller - drop it!!
             if(!machineName.Equals(myName)){
-                primaries.RemoveAll(delegate(Seller candidate){
-                    return candidate.name.Equals(sellerName);
-                });
-                
-                backups.RemoveAll(delegate(Seller candidate){
-                    return candidate.name.Equals(sellerName);
-                });
+                try
+                {
+                    primaries.RemoveAll(delegate(Seller candidate)
+                    {
+                        return candidate.name.Equals(sellerName);
+                    });
+
+                    backups.RemoveAll(delegate(Seller candidate)
+                    {
+                        return candidate.name.Equals(sellerName);
+                    });
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine(e);
+                }
             }
 
             // the new machine holds the new seller
@@ -424,6 +433,8 @@ namespace AirlineServer
                         {
                             ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                             Seller sellerToPrimary = sellerCluster.sendBackupSeller(primaryToTransfer);
+                            if(sellerToPrimary==null)
+                            sellerToPrimary = sellerCluster.sendPrimarySeller(primaryToTransfer);
                             primaries.Add(sellerToPrimary);
                         }
                     }
@@ -452,6 +463,7 @@ namespace AirlineServer
                                 
                                 ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                                 Seller sellerToBackup = sellerCluster.sendPrimarySeller(backupToAssign);
+                                if (sellerToBackup == null) sellerCluster.sendBackupSeller(backupToAssign);
                                 backups.Add(sellerToBackup);
                             }
                         }
