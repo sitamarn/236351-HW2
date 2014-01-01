@@ -423,17 +423,34 @@ namespace AirlineServer
                 {
                     Console.WriteLine("loop getTheMostBusyMachineByPrimaries");
                     machines[busyMachine].primaryOf.Sort();
-                    string primaryToTransfer = machines[busyMachine].primaryOf.First();
 
                     string victim = null;
-                    foreach (string idle in reverseBusy)
+                    string primaryToTransfer = null;
+                    foreach (string transferable in machines[busyMachine].primaryOf)
                     {
-                        if (!idle.Equals(busyMachine) && !machines[idle].backsUp.Contains(primaryToTransfer))
+                        foreach (string idle in reverseBusy)
                         {
-                            victim = idle;
-                            break;
+                            if (!idle.Equals(busyMachine) && !machines[idle].backsUp.Contains(transferable))
+                            {
+                                victim = idle;
+                                primaryToTransfer = transferable;
+                                break;
+                            }
                         }
+
                     }
+                    if (victim == null) break;
+                    //string primaryToTransfer = machines[busyMachine].primaryOf.First();
+
+                    //string victim = null;
+                    //foreach (string idle in reverseBusy)
+                    //{
+                    //    if (!idle.Equals(busyMachine) && !machines[idle].backsUp.Contains(primaryToTransfer))
+                    //    {
+                    //        victim = idle;
+                    //        break;
+                    //    }
+                    //}
                     machines[busyMachine].primaryOf.Remove(primaryToTransfer);
                     machines[victim].primaryOf.Add(primaryToTransfer);
                     if (victim.Equals(myName))
