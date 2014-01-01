@@ -79,6 +79,7 @@ namespace TreeViewLib
         public bool Leave()
         {
             Console.WriteLine("[" + owner + "] Barrier.Leave Starting");
+            System.Threading.Thread.Sleep(1000);
             zk.GetChildren(synchPath, true);
             zk.Delete(name, 0);
 
