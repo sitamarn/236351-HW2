@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.ServiceModel;
+using System.ServiceModel.Web;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -44,13 +45,13 @@ namespace FlightSearchServer
         /// Ticket seller registration service.
         /// Publishing mechanism to allow sellers dynamically register our ticekts selling server
         /// </summary>
-        private ServiceHost tsrHost;
+        private WebServiceHost tsrHost;
         /// <summary>
         /// Client search request service
         /// Publishing mechanism to allow clients dynamically make search queries to all registered 
         /// sellers
         /// </summary>
-        private ServiceHost cqsHost;
+        private WebServiceHost cqsHost;
 
         /// <summary>
         /// Boolean variable to indicate if the singleton was initialized
@@ -66,9 +67,9 @@ namespace FlightSearchServer
         /// <param name="sellerPort">Port for sellers registration publishing server</param>
         public void Initialize(string clientPort, string sellerPort)
         {
-            tsrHost = new ServiceHost(typeof(AirSellerRegisteration), new Uri(@"http://localhost:" + sellerPort + @"/Services/FlightsSearchReg"));
-            cqsHost = new ServiceHost(typeof(ClientQueryService), new Uri(@"http://localhost:" + clientPort + @"/Services/FlightsSearch"));
-
+            tsrHost = new WebServiceHost(typeof(AirSellerRegisteration), new Uri(@"http://192.168.0.2:" + sellerPort + @"/Services/FlightsSearchReg"));
+            cqsHost = new WebServiceHost(typeof(ClientQueryService), new Uri(@"http://192.168.0.2:" + clientPort + @"/Services/FlightsSearch"));
+            //cqsHost.AddServiceEndpoint(typeof(IClientQueryService), new BasicHttpBinding(), "FlightSearchServer.ClientQueryService");
             isInitialized = true;
         }
 
@@ -106,6 +107,8 @@ namespace FlightSearchServer
         /// <returns>Flights from all sellers which match the input criterias</returns>
         public QueryResultTrips QueryTrips(string src, string dst, string date, string companies)
         {
+            string[] companesArr = companies.Split(',');
+            if(companies.Equals("")) companesArr = new String[0];
             Console.WriteLine("FlightSearchServer: " + dst + " " + src + " " + date);
             DateTime dateOfFlight;
             try // Sanitize date
@@ -121,10 +124,12 @@ namespace FlightSearchServer
 
             foreach (ISellerService delegateMachine in delegates.Values)
             {
-                Trip[] trips = delegateMachine.getTrips(src, dst, dateOfFlight, companies.Split(','));
+                Trip[] trips = delegateMachine.getTrips(src, dst, dateOfFlight, companesArr);
                 foreach (Trip trip in trips)
                 {
+                    
                     QueryResultTrip queryTrip = new QueryResultTrip();
+                    queryTrip.firstFlight = new QueryResultFlight();
                     queryTrip.firstFlight.src = trip.firstFlight.src;
                     queryTrip.firstFlight.dst = trip.firstFlight.dst;
                     queryTrip.firstFlight.date = trip.firstFlight.date;
@@ -132,6 +137,7 @@ namespace FlightSearchServer
                     queryTrip.firstFlight.flightNumber = trip.firstFlight.flightNumber;
                     if (trip.secondFlight != null)
                     {
+                        queryTrip.secondFlight = new QueryResultFlight();
                         queryTrip.secondFlight.src = trip.secondFlight.src;
                         queryTrip.secondFlight.dst = trip.secondFlight.dst;
                         queryTrip.secondFlight.date = trip.secondFlight.date;
@@ -142,13 +148,15 @@ namespace FlightSearchServer
                     {
                         queryTrip.secondFlight = null;
                     }
-
+                    
                     queryTrip.price = trip.price;
 
                     queryTrips.Add(queryTrip);
                 }
             }
-
+            //var a = ;
+            queryTrips = new QueryResultTrips(queryTrips.ToList().Distinct(new QueryResultsTripComparer()).ToList());
+            //HashSet<QueryResultFlight> hashset = new HashSet<QueryResultFlight>(queryTrips.ToList());
             queryTrips.Sort();
 
             return queryTrips;

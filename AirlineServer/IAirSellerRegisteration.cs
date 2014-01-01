@@ -11,6 +11,7 @@ namespace Registeration
     [ServiceContract]
     public interface IAirSellerRegisteration
     {
+        [WebInvoke(Method = "PUT", UriTemplate = "registeration/{clusterName}")]
         [OperationContract]
         void RegisterSeller(Uri request, string clusterName);
     }

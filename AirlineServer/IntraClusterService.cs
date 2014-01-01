@@ -16,7 +16,7 @@ namespace AirlineServer
     {
         List<AirlineServer.Seller> primaries;
         List<AirlineServer.Seller> backups;
-        bool isLeader  = false;
+        bool isLeader = false;
         string myName = null;
         string mysearchServerAddress;
         string myAddress;
@@ -60,8 +60,8 @@ namespace AirlineServer
             var machines = AirlineReplicationModule.Instance.Machines;
             var keys = machines.Keys;
 
-            isLeader = myName.Equals(keys.Min());
-            return isLeader;
+            return myName.Equals(keys.Min());
+            
         }
 
         public void respondIfNewNode(String machineName, String sellerName, Uri machine )
@@ -110,10 +110,18 @@ namespace AirlineServer
             {
                 try
                 {
-                   // WebChannelFactory<IAirSellerRegisteration> cf = new WebChannelFactory<IAirSellerRegisteration>(new Uri(mysearchServerAddress));
-                   // IAirSellerRegisteration registerChannel = cf.CreateChannel();
-                    // Register the channel in the server
-                    //registerChannel.RegisterSeller(new Uri(myAddress), clusterName);
+                    ServiceEndpoint sellerSearchEndPoint =
+                    new ServiceEndpoint(ContractDescription.GetContract(
+                        typeof(IAirSellerRegisteration)),
+                        new WebHttpBinding(),
+                        new EndpointAddress
+                        (mysearchServerAddress));
+                    using (WebChannelFactory<IAirSellerRegisteration> cf = new WebChannelFactory<IAirSellerRegisteration>(sellerSearchEndPoint))
+                    {
+                        IAirSellerRegisteration registerChannel = cf.CreateChannel();
+                        //Register the channel in the server
+                        registerChannel.RegisterSeller(new Uri(myAddress), clusterName);
+                    }
                 }
                 catch (ProtocolException e)
                 {
@@ -477,7 +485,6 @@ namespace AirlineServer
             backupsToAssign.Sort();
             foreach (string backupToAssign in backupsToAssign)
             {
-                bool isSet = false;
                 foreach (string idleMachine in idles)
                 {
                     if (/*machines[idleMachine].backsUp.Count < averageB+1 && */!machines[idleMachine].primaryOf.Contains(backupToAssign))
@@ -521,34 +528,43 @@ namespace AirlineServer
         {
             ZKSynch barrier = AirlineReplicationModule.Instance.barrier();
             // If this machine is a leader: register as a delegate
-            if (checkIfLeader())
+            if (!isLeader && checkIfLeader())
             {
-                      try
-                        {
-                           // WebChannelFactory<IAirSellerRegisteration> cf = new WebChannelFactory<IAirSellerRegisteration>(new Uri(mysearchServerAddress));
-                          //  IAirSellerRegisteration registerChannel = cf.CreateChannel();
-                            // Register the channel in the server
-                          //  registerChannel.RegisterSeller(new Uri(myAddress), clusterName);
-                        }
-                        catch (ProtocolException e)
-                        {
-                            Console.WriteLine("Bad Protocol: " + e.Message);
-                        }
-                        catch (Exception e)
-                        {
+                isLeader = true;
+                try
+                {
+                    ServiceEndpoint sellerSearchEndPoint =
+                    new ServiceEndpoint(ContractDescription.GetContract(
+                        typeof(IAirSellerRegisteration)),
+                        new WebHttpBinding(),
+                        new EndpointAddress
+                        (mysearchServerAddress));
+                    using (WebChannelFactory<IAirSellerRegisteration> cf = new WebChannelFactory<IAirSellerRegisteration>(sellerSearchEndPoint))
+                    {
+                        IAirSellerRegisteration registerChannel = cf.CreateChannel();
+                        //Register the channel in the server
+                        registerChannel.RegisterSeller(new Uri(myAddress), clusterName);
+                    }
+                }
+                catch (ProtocolException e)
+                {
+                    Console.WriteLine("Bad Protocol: " + e.Message);
+                }
+                catch (Exception e)
+                {
 
-                            if (e.InnerException is WebException)
-                            {
-                                HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
-                                Console.WriteLine("Failed, {0}", resp.StatusDescription);
-                            }
-                            else
-                            {
-                                Console.WriteLine("Advertisement connection kicked the bucket, quitting because:");
-                                Console.WriteLine(e.Message.ToString());
-                            }
-                            return;
-                        }
+                    if (e.InnerException is WebException)
+                    {
+                        HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
+                        Console.WriteLine("Failed, {0}", resp.StatusDescription);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Advertisement connection kicked the bucket, quitting because:");
+                        Console.WriteLine(e.Message.ToString());
+                    }
+                    return;
+                }
             }
 
             // get the updated snapshot

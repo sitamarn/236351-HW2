@@ -78,5 +78,32 @@ namespace Registeration
             Console.WriteLine("seller {0} from {1} registered successfully", name, request.ToString());
 
         }
+
+        public void unregisterSeller(Uri request, string name)
+        {
+            if (FlightSearchLogic.Instance.delegates.ContainsKey(name))
+            {
+                ISellerService tsqs;
+                bool gotValue = FlightSearchLogic.Instance.delegates.TryGetValue(name, out tsqs);
+                if (gotValue)
+                {
+                    IClientChannel currChannel = (IClientChannel)tsqs;
+                    try
+                    {
+                        currChannel.Close();
+                        currChannel.Abort();
+                    }
+                    catch (Exception)
+                    {
+                        currChannel.Abort();
+                        Console.WriteLine("Closing of stale channel {0} failed, ignoring", currChannel.RemoteAddress.Uri.ToString());
+                    }
+                    ISellerService victimChannel;
+                    FlightSearchLogic.Instance.delegates.TryRemove(name, out victimChannel);
+                    Console.WriteLine("Successfully remove old seller {0} by name", name);
+                }
+            }
+
+        }
     }
 }

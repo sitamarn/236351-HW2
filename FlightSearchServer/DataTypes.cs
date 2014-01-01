@@ -18,6 +18,29 @@ namespace FlightSearchServer
 
         public QueryResultTrips() { }
         public QueryResultTrips(List<QueryResultTrip> trip) : base(trip) { }
+        public QueryResultTrips DistinctMe(){
+            return new QueryResultTrips(this.Distinct().ToList());
+            
+        }
+    }
+
+    class QueryResultsTripComparer : IEqualityComparer<QueryResultTrip>
+    {
+        public bool Equals(QueryResultTrip x, QueryResultTrip other)
+        {
+            if (x.firstFlight.src.Equals(other.firstFlight.src) && x.firstFlight.dst.Equals(other.firstFlight.dst) && x.firstFlight.seller.Equals(other.firstFlight.seller) && x.firstFlight.flightNumber.Equals(other.firstFlight.flightNumber) && x.firstFlight.date.Equals(other.firstFlight.date))
+            {
+                if (x.secondFlight == null) return (other.secondFlight == null);
+                if (other.secondFlight == null) return false;
+                return (x.secondFlight.src.Equals(other.secondFlight.src) && x.secondFlight.dst.Equals(other.secondFlight.dst) && x.secondFlight.seller.Equals(other.secondFlight.seller) && x.secondFlight.flightNumber.Equals(other.secondFlight.flightNumber) && x.secondFlight.date.Equals(other.secondFlight.date));
+            }
+            return false;
+        }
+
+        public int GetHashCode(QueryResultTrip obj)
+        {
+            return 0;
+        }
     }
 
     /// <summary>
@@ -25,7 +48,7 @@ namespace FlightSearchServer
     /// QueryResultTrips.
     /// </summary>
     [DataContract]
-    public class QueryResultTrip : IComparable
+    public class QueryResultTrip : IComparable, IEquatable<QueryResultTrip>
     {
         [DataMember]
         public int price { get; set; }
@@ -63,6 +86,17 @@ namespace FlightSearchServer
                     return clientFlight;
                 }
          * */
+
+        public bool Equals(QueryResultTrip other)
+        {
+            if (firstFlight.src.Equals(other.firstFlight.src) && firstFlight.dst.Equals(other.firstFlight.dst) && firstFlight.seller.Equals(other.firstFlight.seller) && firstFlight.flightNumber.Equals(other.firstFlight.flightNumber) && firstFlight.date.Equals(other.firstFlight.date))
+            {
+                if (secondFlight == null) return (other.secondFlight == null);
+                if (other.secondFlight == null) return false;
+                return (secondFlight.src.Equals(other.secondFlight.src) && secondFlight.dst.Equals(other.secondFlight.dst) && secondFlight.seller.Equals(other.secondFlight.seller) && secondFlight.flightNumber.Equals(other.secondFlight.flightNumber) && secondFlight.date.Equals(other.secondFlight.date));
+            }
+            return false;
+        }
     }
 
 

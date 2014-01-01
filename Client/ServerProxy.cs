@@ -134,7 +134,7 @@ namespace Client
                 GetDate(strDate);
 
                 QueryResultTrips result = channel.GetFlights(src, dst, strDate, airServers);
-
+                
                 foreach (QueryResultTrip trip in result)
                 {
                     Console.WriteLine("{0}$: ", trip.price);

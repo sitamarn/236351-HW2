@@ -42,7 +42,9 @@ namespace AirlineServer
                             dstFlights.AddRange(sellerCluster.getRelevantFlightsByDst(dst, date.AddDays(1)));
                         }
                     }
-                    catch (Exception) { }
+                    catch (Exception e) {
+                        throw new FaultException("The query could not be made: "+ e.Message);
+                    }
 
                     foreach (AirlineServer.Flight srcFlight in sourceFlights)
                     {
