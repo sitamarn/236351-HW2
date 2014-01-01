@@ -340,8 +340,9 @@ namespace AirlineServer
                     // sort the backups in  a deterministic (stable) way - but thow out
                     // the sellers that the new machine owns as primary
                     List<string> busyMachinesBackups = new List<string>(machines[busyMachine].backsUp).Except(machines[lightMachine].primaryOf).ToList();
+                    busyMachinesBackups = busyMachinesBackups.Except(machines[lightMachine].backsUp).ToList();
                     busyMachinesBackups.Sort();
-
+                    if (busyMachinesBackups.Count == 0) break;
                     string BackupToTransfer = busyMachinesBackups.First();
                     machines[busyMachine].backsUp.Remove(BackupToTransfer);
                     machines[lightMachine].backsUp.Add(BackupToTransfer);
