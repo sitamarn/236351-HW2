@@ -240,6 +240,10 @@ namespace AirlineServer
                 machines[victim].backsUp.Add(sellerName);
                 Console.WriteLine(230);
                 // execute a deterministic load-balancing algorithm
+
+            }
+            if (machines.Keys.Count > 2)
+            {
                 Console.WriteLine("\t** BALANCING ALGORITHM STARTED **");
                 balanceTheTreeAfterJoined(machines, machineName, machine);
             }
@@ -476,7 +480,7 @@ namespace AirlineServer
                 bool isSet = false;
                 foreach (string idleMachine in idles)
                 {
-                    while (/*machines[idleMachine].backsUp.Count < averageB+1 && */!machines[idleMachine].primaryOf.Contains(backupToAssign))
+                    if (/*machines[idleMachine].backsUp.Count < averageB+1 && */!machines[idleMachine].primaryOf.Contains(backupToAssign))
                     {
 
                         //machines[busyMachine].backsUp.Remove(BackupToTransfer);
@@ -494,10 +498,9 @@ namespace AirlineServer
                                 backups.Add(sellerToBackup);
                             }
                         }
-                        isSet = true;
                         break;
                     }
-                    if (isSet) break;
+                    //if (isSet) break;
                 }
             }
 
