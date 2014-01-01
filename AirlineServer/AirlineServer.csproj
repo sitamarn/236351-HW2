@@ -72,7 +72,8 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy $(TargetPath) $(TargetDir)AirlineServer1.exe
-copy $(TargetPath) $(TargetDir)AirlineServer2.exe</PostBuildEvent>
+copy $(TargetPath) $(TargetDir)AirlineServer2.exe
+copy $(TargetPath) $(TargetDir)AirlineServer3.exe</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

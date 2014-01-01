@@ -219,11 +219,9 @@ namespace TreeViewLib
         /// <param name="machineName"></param>
         public void removeMachine(string machineName)
         {
-            if (machinesNames.Contains(machineName))
-            {
-                machinesData.Remove(machineName);
-            }
-            else
+
+           
+            if(!machinesData.Remove(machineName))       
             {
                 Console.WriteLine("*WARNING* Trying to remove machine " + machineName + " which doesn't exist in local view");
             }
