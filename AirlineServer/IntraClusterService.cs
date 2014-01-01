@@ -69,7 +69,7 @@ namespace AirlineServer
             // Get the cuurent snapshot of the system - including the new machine that came up!
             //not included the sellers that it holds.
             Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
-
+            Console.WriteLine(72);
             // in the ZK tree: If a machine holds a seller that has return to live - drop it!
             foreach(string smachine in machines.Keys){
                 if (!smachine.Equals(machineName))
@@ -78,7 +78,7 @@ namespace AirlineServer
                 machines[smachine].backsUp.Remove(sellerName);  
                 }
             }
-
+            Console.WriteLine(83);
             // in the local data: If a this machine holds an old version of the seller - drop it!!
             if(!machineName.Equals(myName)){
                 primaries.RemoveAll(delegate(Seller candidate){
@@ -177,12 +177,14 @@ namespace AirlineServer
 
                     }
                 }
+                Console.WriteLine(180);
                 // find a deterministic victim to hold the backup of the new seller
-                string victim = (from p in machines where !p.Key.Equals(sellerName) orderby p.Value.primaryOf.Count ascending, p.Key ascending select p.Key).First();
-
+                string victim = (from p in machines where !p.Key.Equals(machineName) orderby p.Value.primaryOf.Count ascending, p.Key ascending select p.Key).First();
+                Console.WriteLine(183);
                 // if the victim is this machine - follow the command and ask a clone from the new machine that owns the primary replica
                 if (victim.Equals(myName))
                 {
+                    Console.WriteLine(187);
                     Uri uri = FindPrimaryOfSeller(sellerName);
                     try
                     {
@@ -190,13 +192,14 @@ namespace AirlineServer
                             ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(machines[machineName].uri));
                         using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                         {
-
+                            Console.WriteLine(195);
                             ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                             Seller sellerToBackup = sellerCluster.sendPrimarySeller(sellerName);
                             if (sellerToBackup == null)
                             {
                                 sellerToBackup = sellerCluster.sendBackupSeller(sellerName);
                             }
+                            Console.WriteLine(202);
                             backups.Add(sellerToBackup);
 
                         }
@@ -221,10 +224,10 @@ namespace AirlineServer
                         return;
                     }
                 }
-
+                Console.WriteLine(227);
                 // update it in the ZK tree
                 machines[victim].backsUp.Add(sellerName);
-
+                Console.WriteLine(230);
                 // execute a deterministic load-balancing algorithm
                 Console.WriteLine("\t** BALANCING ALGORITHM STARTED **");
                 balanceTheTreeAfterJoined(machines, machineName, machine);
