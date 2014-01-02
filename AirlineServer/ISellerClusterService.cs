@@ -17,9 +17,9 @@ namespace AirlineServer
         Seller sendBackupSeller(string sellerName);
 
         [OperationContract]
-        List<Flight> getRelevantFlightsBySrc(string src, DateTime date);
+        List<Flight> getRelevantFlightsBySrc(string src, DateTime date, List<string> sellersToSearch);
 
         [OperationContract]
-        List<Flight> getRelevantFlightsByDst(string dst, DateTime date);
+        List<Flight> getRelevantFlightsByDst(string dst, DateTime date, List<string> sellersToSearch);
     }
 }

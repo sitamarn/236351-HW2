@@ -49,6 +49,7 @@
   <ItemGroup>
     <Compile Include="CacheData.cs" />
     <Compile Include="ExOpBehavior.cs" />
+    <Compile Include="ExOpInvoker.cs" />
     <Compile Include="IAirSellerRegisteration.cs" />
     <Compile Include="IntraClusterService.cs" />
     <Compile Include="ISellerClusterService.cs" />

@@ -30,7 +30,7 @@ namespace FlightSearchServer
             try
             {
                 FlightSearchLogic fss = FlightSearchLogic.Instance; // DO NOT REMOVE THIS (THREAD CORRECTNESS)
-                fss.Initialize(args[0], args[1]); // Host services
+                fss.Initialize(args[0], args[1], args[2]); // Host services
                 fss.run(); // wait till death
 
                 Console.ReadKey();

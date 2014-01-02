@@ -92,7 +92,7 @@ namespace AirlineServer
         /// <param name="args"><name> <alliance> <search server port> <airline servers port> <flights search server URI #2> <input file></param>
         static void Main(string[] args)
         {
-            object lockObject = new object();
+            CacheData cache = new CacheData();
             if (args.Length != 6)
             {
                 Console.WriteLine("Bad arguments");
@@ -130,7 +130,7 @@ namespace AirlineServer
             }
 
             // TODO: remove this
-            String ip = "192.168.0.2";
+            String ip = "localhost";
             if (args[5].StartsWith(@"c:\"))
             {
                 ip = "192.168.0.1";
@@ -141,9 +141,9 @@ namespace AirlineServer
             string sellerAddress = @"http://"+ip+":" + args[2] + @"/SellerService";
 
            // Builder
-            IntraClusterService ics = new IntraClusterService(seller, url, sellerAddress, args[1], lockObject);
+            IntraClusterService ics = new IntraClusterService(cache, seller, url, sellerAddress, args[1]);
             AirlineReplicationModule.Instance.initialize(zkAddress, args[1], args[0], new Uri(intraClusterAddress), ics.respondIfNewNode, ics.respondIfSomeoneLeft);
-            SellerService sa = new SellerService(lockObject);
+            SellerService sa = new SellerService();
             
             AirlineReplicationModule.Instance.waitForNameRegister();
             ics.setName(AirlineReplicationModule.Instance.MachineName);
@@ -165,6 +165,14 @@ namespace AirlineServer
                         sellerHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode = InstanceContextMode.Single;
                         sellerHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().IncludeExceptionDetailInFaults = true;
                         intraHost.Description.Behaviors.Add(Ismb);
+
+                        ExOpBehavior cacheBehavior = new ExOpBehavior(cache);
+                        foreach (OperationDescription description in sellerEndPoint.Contract.Operations)
+                        {
+                            if (description.Name.Equals("query"))
+                                description.Behaviors.Add(cacheBehavior);
+                        }
+
                         //intraHost.Description.Behaviors.Add(new ServiceDebugBehavior() { IncludeExceptionDetailInFaults = true });
                         intraHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode = InstanceContextMode.Single;
                         intraHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().IncludeExceptionDetailInFaults = true;

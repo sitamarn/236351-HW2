@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.ServiceModel;
+using System.ServiceModel.Description;
 using System.ServiceModel.Web;
 using System.Text;
 using System.Threading.Tasks;
@@ -51,7 +52,7 @@ namespace FlightSearchServer
         /// Publishing mechanism to allow clients dynamically make search queries to all registered 
         /// sellers
         /// </summary>
-        private WebServiceHost cqsHost;
+        private ServiceHost cqsHost;
 
         /// <summary>
         /// Boolean variable to indicate if the singleton was initialized
@@ -65,11 +66,20 @@ namespace FlightSearchServer
         /// </summary>
         /// <param name="clientPort">Port for client publishing server</param>
         /// <param name="sellerPort">Port for sellers registration publishing server</param>
-        public void Initialize(string clientPort, string sellerPort)
+        public void Initialize(string clientPort, string sellerPort, string logFileName)
         {
-            tsrHost = new WebServiceHost(typeof(AirSellerRegisteration), new Uri(@"http://192.168.0.2:" + sellerPort + @"/Services/FlightsSearchReg"));
-            cqsHost = new WebServiceHost(typeof(ClientQueryService), new Uri(@"http://192.168.0.2:" + clientPort + @"/Services/FlightsSearch"));
-            //cqsHost.AddServiceEndpoint(typeof(IClientQueryService), new BasicHttpBinding(), "FlightSearchServer.ClientQueryService");
+            tsrHost = new WebServiceHost(typeof(AirSellerRegisteration), new Uri(@"http://localhost:" + sellerPort + @"/Services/FlightsSearchReg"));
+            cqsHost = new ServiceHost(typeof(ClientQueryService), new Uri(@"http://localhost:" + clientPort + @"/Services/FlightsSearch"));
+            //ServiceEndpoint sellerEndPoint = sellerHost.AddServiceEndpoint(typeof(ISellerService), new BasicHttpBinding(), sellerAddress);
+            ServiceEndpoint sellerEndPoint = cqsHost.AddServiceEndpoint(typeof(IClientQueryService), new BasicHttpBinding(), "FlightSearchServer.ClientQueryService");
+
+            ExOpBehavior logBehavior = new ExOpBehavior(logFileName);
+            foreach (OperationDescription description in sellerEndPoint.Contract.Operations)
+            {
+                if (description.Name.Equals("GetFlights"))
+                    description.Behaviors.Add(logBehavior);
+            }
+
             isInitialized = true;
         }
 

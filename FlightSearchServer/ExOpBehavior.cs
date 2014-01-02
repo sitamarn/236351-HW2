@@ -5,15 +5,15 @@ using System.ServiceModel.Description;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AirlineServer
+namespace FlightSearchServer
 {
     class ExOpBehavior : IOperationBehavior
     {
-        CacheData cache = null;
+        string logFileName;
 
-        public ExOpBehavior(CacheData cachedata)
+        public ExOpBehavior(string LogFileName)
         {
-            cache = cachedata;
+            logFileName = LogFileName;
         }
         public void AddBindingParameters(OperationDescription operationDescription, System.ServiceModel.Channels.BindingParameterCollection bindingParameters)
         {
@@ -27,7 +27,7 @@ namespace AirlineServer
 
         public void ApplyDispatchBehavior(OperationDescription operationDescription, System.ServiceModel.Dispatcher.DispatchOperation dispatchOperation)
         {
-            dispatchOperation.Invoker = new ExOpInvoker(cache, dispatchOperation.Invoker);
+            dispatchOperation.Invoker = new ExOpInvoker(logFileName, dispatchOperation.Invoker);
         }
 
         public void Validate(OperationDescription operationDescription)

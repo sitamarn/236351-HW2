@@ -16,7 +16,7 @@ namespace AirlineServer
         private class CasheLine
         {
             public string key;
-            public List<Seller> sellers;
+            public List<Trip> trips;
         }
 
         public void clear()
@@ -28,11 +28,11 @@ namespace AirlineServer
         }
 
 
-        public void insert(string query, List<Seller> sellerList)
+        public void insert(string query, List<Trip> tripList)
         {
             CasheLine line = new CasheLine();
             line.key = query;
-            line.sellers = sellerList;
+            line.trips = tripList;
 
             lock (cacheLock)
             {
@@ -46,7 +46,7 @@ namespace AirlineServer
             }
         }
 
-        public List<Seller> getDataFromCache(String query)
+        public List<Trip> getDataFromCache(String query)
         {
             CasheLine result = null;
             String key = query;
@@ -59,7 +59,7 @@ namespace AirlineServer
                 result = (CasheLine)hashtable[key];
             }
            
-            return result.sellers;
+            return result.trips;
         }
 
 

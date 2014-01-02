@@ -56,6 +56,8 @@
     <Compile Include="AirSellerRegisteration.cs" />
     <Compile Include="ClientQueryService.cs" />
     <Compile Include="DataTypes.cs" />
+    <Compile Include="ExOpBehavior.cs" />
+    <Compile Include="ExOpInvoker.cs" />
     <Compile Include="FlightSearchLogic.cs" />
     <Compile Include="FlightSearchServerException.cs" />
     <Compile Include="IAirSellerRegisteration.cs" />
