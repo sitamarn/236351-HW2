@@ -625,10 +625,10 @@ namespace TreeViewLib
             set { mLBDone = value; }
         }
 
-        public ZKSynch barrier() 
+        public ZKBarrier barrier() 
         {
             int machines = zk.GetChildren(MachinesPath, false).Count();
-            ZKSynch barrier = ZKSynch.ZKBarrier(zk, BarrierPath, MachineName, machines); // Create and block barrier
+            ZKBarrier barrier = ZKBarrier.Barrier(zk, BarrierPath, MachineName, machines); // Create and block barrier
             return barrier;
         }
 

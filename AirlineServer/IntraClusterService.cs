@@ -67,7 +67,7 @@ namespace AirlineServer
         public void respondIfNewNode(String machineName, String sellerName, Uri machine )
         {
             //if(machineName.Equals(myName)) primaries.add
-            ZKSynch barrier = AirlineReplicationModule.Instance.barrier(); //Barrier - Create, Enter, BLOCK -> Leave when Balancing ends
+            var barrier = AirlineReplicationModule.Instance.barrier(); //Barrier - Create, Enter, BLOCK -> Leave when Balancing ends
             // Get the cuurent snapshot of the system - including the new machine that came up!
             //not included the sellers that it holds.
             Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
@@ -472,8 +472,8 @@ namespace AirlineServer
                         {
                             ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                             Seller sellerToPrimary = sellerCluster.sendBackupSeller(primaryToTransfer);
-                            if(sellerToPrimary==null)
-                            sellerToPrimary = sellerCluster.sendPrimarySeller(primaryToTransfer);
+                            if (sellerToPrimary == null)
+                                sellerToPrimary = sellerCluster.sendPrimarySeller(primaryToTransfer);
                             primaries.Add(sellerToPrimary);
                         }
                     }
@@ -526,7 +526,7 @@ namespace AirlineServer
         }
         public void respondIfSomeoneLeft(List<String> sellersWhoLostPrimary, List<String> sellersWhoLostBackup)
         {
-            ZKSynch barrier = AirlineReplicationModule.Instance.barrier();
+            var barrier = AirlineReplicationModule.Instance.barrier();
             // If this machine is a leader: register as a delegate
             if (!isLeader && checkIfLeader())
             {

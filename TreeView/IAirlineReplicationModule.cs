@@ -14,8 +14,8 @@ namespace TreeViewLib
         void initialize(String address, String clusterName, String originalSeller, Uri localService, MachineJoined mj, MachineDropped md);
         //void updateMachineData(ZNodesDataStructures.MachineNode machineData);
         void updateMachineData(Dictionary<string, ZNodesDataStructures.MachineNode> snapshot);
-        
-        ZKSynch barrier();
+
+        ZKBarrier barrier();
         void waitForNameRegister();
         /// <summary>
         /// This function is called when a machine drops from the Zookeeper tree

@@ -20,14 +20,6 @@ namespace TreeViewLib
 
         private AutoResetEvent connected = new AutoResetEvent(false);
 
-        public static ZKSynch ZKBarrier(ZooKeeperWrapper handler, String synchNodePath, String owner, int size)
-        {
-            ZKSynch sZK = new ZKSynch(handler, synchNodePath, owner, size);
-            sZK.Enter();
-            return sZK;
-        }
-
-
         public ZKSynch(ZooKeeperWrapper handler, String synchNodePath, String owner, int size) 
         {
             zk = new ZooKeeper(handler.Address, new TimeSpan(0, 0, 0, handler.Timeout, 0), this);
@@ -79,7 +71,7 @@ namespace TreeViewLib
         public bool Leave()
         {
             Console.WriteLine("[" + owner + "] Barrier.Leave Starting");
-            System.Threading.Thread.Sleep(1000);
+            //System.Threading.Thread.Sleep(1000);
             zk.GetChildren(synchPath, true);
             zk.Delete(name, 0);
 
