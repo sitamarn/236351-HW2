@@ -491,7 +491,6 @@ namespace AirlineServer
         }
         public void respondIfSomeoneLeft(List<String> sellersWhoLostPrimary, List<String> sellersWhoLostBackup)
         {
-            cache.clear();
             var barrier = AirlineReplicationModule.Instance.barrier();
             // If this machine is a leader: register as a delegate
             if (!isLeader && checkIfLeader())
