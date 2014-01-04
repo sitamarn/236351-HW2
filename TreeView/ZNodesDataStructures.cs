@@ -29,6 +29,16 @@ namespace TreeViewLib
                 sb.AppendLine("Backup of: " + String.Join(" ", backsUp));
                 return sb.ToString();
             }
+            public MachineNode(MachineNode node)
+            {
+                this.uri = node.uri;
+                this.backsUp = new List<string>(node.backsUp);
+                this.primaryOf = new List<string>(node.primaryOf);
+            }
+            public MachineNode()
+            {
+
+            }
         }
 
         [Serializable]

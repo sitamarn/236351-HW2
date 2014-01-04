@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using System.ServiceModel;
 using System.ServiceModel.Description;
 using System.ServiceModel.Web;
@@ -134,7 +135,30 @@ namespace FlightSearchServer
 
             foreach (ISellerService delegateMachine in delegates.Values)
             {
-                Trip[] trips = delegateMachine.getTrips(src, dst, dateOfFlight, companesArr);
+                Trip[] trips = null;
+                try
+                {
+                    trips = delegateMachine.getTrips(src, dst, dateOfFlight, companesArr);
+                }
+                catch (ProtocolException e)
+                {
+                    Console.WriteLine("Bad Protocol: " + e.Message);
+                }
+                catch (Exception e)
+                {
+
+                    if (e.InnerException is WebException)
+                    {
+                        HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
+                        Console.WriteLine("Failed, {0}", resp.StatusDescription);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Advertisement connection kicked the bucket, quitting because:");
+                        Console.WriteLine(e.Message.ToString());
+                    }
+                    return null;
+                }
                 foreach (Trip trip in trips)
                 {
                     

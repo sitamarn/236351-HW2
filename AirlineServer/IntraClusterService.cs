@@ -69,7 +69,7 @@ namespace AirlineServer
             // Get the cuurent snapshot of the system - including the new machine that came up!
             //not included the sellers that it holds.
             Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
-
+            
             // in the ZK tree: If a machine holds a seller that has return to live - drop it!
             foreach(string smachine in machines.Keys){
                 if (!smachine.Equals(machineName))
@@ -78,6 +78,9 @@ namespace AirlineServer
                 machines[smachine].backsUp.Remove(sellerName);  
                 }
             }
+
+            // this is the oldest legal view of the tree. necessary to enable sellers transfers
+            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = copyMachines(machines);
 
             // in the local data: If a this machine holds an old version of the seller - drop it!!
             if (!machineName.Equals(myName))
@@ -195,7 +198,7 @@ namespace AirlineServer
                 if (victim.Equals(myName))
                 {
 
-                    Uri uri = FindPrimaryOfSeller(sellerName);
+                    Uri uri = machine;
                     try
                     {
                         ServiceEndpoint endPoint = new ServiceEndpoint(
@@ -239,14 +242,15 @@ namespace AirlineServer
             }
 
             // execute a deterministic load-balancing algorithm
-            if (machines.Keys.Count > 2)
+            if (machines.Keys.Count > 1)
             {
                 Console.WriteLine("\t** BALANCING ALGORITHM STARTED **");
-                balanceTheTreeAfterJoined(machines, machineName, machine);
+                balanceTheTreeAfterJoined(machines, machinesOldVersion, machineName, machine);
+                // this lock makes sure that no search server will serviced while sellers are removed from the machine.
+                Console.WriteLine("\t** BALANCING ALGORITHM FINISHED **");
             }
 
-            // this lock makes sure that no search server will serviced while sellers are removed from the machine.
-            Console.WriteLine("\t** BALANCING ALGORITHM FINISHED **");
+
             barrier.Leave();
 
                 //// barrier: in order to prevent losing replicas at same time that other machines asks for them
@@ -261,8 +265,8 @@ namespace AirlineServer
                 // print replicas status
                 print(machines);
         }
-        
-        private void balanceTheTreeAfterJoined(Dictionary<string, ZNodesDataStructures.MachineNode> machines,string joinedMachine, Uri machine)
+
+        private void balanceTheTreeAfterJoined(Dictionary<string, ZNodesDataStructures.MachineNode> machines, Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion, string joinedMachine, Uri machine)
         {
             // calculate the average number of sellers (separately primaries and backups)
             // that each machine has to hold approximately in order to keep load balancing
@@ -291,7 +295,7 @@ namespace AirlineServer
 
                     // if this machine is the new joined machine - follow the order
                     if(joinedMachine.Equals(myName)){
-                        Uri uri = FindPrimaryOfSeller(primaryToTransfer);
+                        Uri uri = FindPrimaryOfSeller(primaryToTransfer, machinesOldVersion);
                         try
                         {
                             ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),
@@ -300,7 +304,7 @@ namespace AirlineServer
                             {
                                 ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                                 Seller sellerToPrimary = sellerCluster.sendPrimarySeller(primaryToTransfer);
-                                if (sellerToPrimary == null) { sellerToPrimary = sellerCluster.sendBackupSeller(primaryToTransfer); }
+                                
                                 primaries.Add(sellerToPrimary);
                             }
                         }
@@ -349,16 +353,13 @@ namespace AirlineServer
                     {
                         try
                         {
+                            Uri uri = FindPrimaryOfSeller(BackupToTransfer, machinesOldVersion);
                             ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),
-                                new BasicHttpBinding(), new EndpointAddress(machines[busyMachine].uri));
+                                new BasicHttpBinding(), new EndpointAddress(uri));
                             using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                             {
                                 ISellerClusterService sellerCluster = httpFactory.CreateChannel();
-                                Seller sellerToBackup = sellerCluster.sendBackupSeller(BackupToTransfer);
-                                if (sellerToBackup == null)
-                                {
-                                    sellerToBackup = sellerCluster.sendPrimarySeller(BackupToTransfer);
-                                }
+                                Seller sellerToBackup = sellerCluster.sendPrimarySeller(BackupToTransfer);
                                 backups.Add(sellerToBackup);
                             }
                         }
@@ -386,8 +387,21 @@ namespace AirlineServer
                 }
             }
         }
+        private Dictionary<string, ZNodesDataStructures.MachineNode> copyMachines(Dictionary<string, ZNodesDataStructures.MachineNode> machines)
+        {
+            Dictionary<string, ZNodesDataStructures.MachineNode> machinesClone = new Dictionary<string, ZNodesDataStructures.MachineNode>();
+            foreach (string name in machines.Keys)
+            {
+                machinesClone.Add(name, new ZNodesDataStructures.MachineNode());
+                machinesClone[name].uri = machines[name].uri;
+                machinesClone[name].backsUp = new List<string>(machines[name].backsUp);
+                machinesClone[name].primaryOf = new List<string>(machines[name].primaryOf);
+            }
+            return machinesClone;
 
-        private void balanceTheTreeAfterLeft(Dictionary<string, ZNodesDataStructures.MachineNode> machines, List<string> backupsToAssign)
+
+        }
+        private void balanceTheTreeAfterLeft(Dictionary<string, ZNodesDataStructures.MachineNode> machines,Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldView, List<string> backupsToAssign, List<string> primariesToAssign)
         {
             
             // calculate the average number of sellers (separately primaries and backups)
@@ -398,96 +412,108 @@ namespace AirlineServer
                 averageP += machines[mac].primaryOf.Count;
                 averageB += machines[mac].backsUp.Count;
             }
-            averageP = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(averageP) / machines.Count));
+            averageP = Convert.ToInt32(Math.Ceiling((Convert.ToDecimal(averageP) + primariesToAssign.Count) / machines.Count));
             averageB = Convert.ToInt32(Math.Ceiling((Convert.ToDecimal(averageB) + backupsToAssign.Count) / machines.Count));
 
             // we want a deterministic list of the machines order by their availability
             // so we reverese the list
             List<string> reverseBusy = getTheMostBusyMachineOrderByPrimaries(machines);
             reverseBusy.Reverse();
-
-
-            foreach (string busyMachine in getTheMostBusyMachineOrderByPrimaries(machines))
+            primariesToAssign.Sort();
+            List<string> backupsThatShouldBeMoved = new List<string>();
+            foreach (string lightMachine in reverseBusy)
             {
-                while (machines[busyMachine].primaryOf.Count >  averageP)
+                if (primariesToAssign.Count == 0) break;
+
+
+                while (machines[lightMachine].primaryOf.Count < averageP)
                 {
-
-                    machines[busyMachine].primaryOf.Sort();
-
-                    string victim = null;
-                    string primaryToTransfer = null;
-                    foreach (string transferable in machines[busyMachine].primaryOf)
-                    {
-                        foreach (string idle in reverseBusy)
-                        {
-                            if (!idle.Equals(busyMachine) && !machines[idle].backsUp.Contains(transferable))
-                            {
-                                victim = idle;
-                                primaryToTransfer = transferable;
-                                break;
-                            }
-                        }
-
+                    if (primariesToAssign.Count == 0) break;
+                    string primaryToTransfer = primariesToAssign.First();
+                    machines[lightMachine].primaryOf.Add(primaryToTransfer);
+                    if(machines[lightMachine].backsUp.Contains(primaryToTransfer)){
+                        machines[lightMachine].backsUp.Remove(primaryToTransfer);
+                        backupsToAssign.Add(primaryToTransfer);
+                        backupsThatShouldBeMoved.Add(primaryToTransfer);
                     }
-                    if (victim == null) break;
-
-                    machines[busyMachine].primaryOf.Remove(primaryToTransfer);
-                    machines[victim].primaryOf.Add(primaryToTransfer);
-                    if (victim.Equals(myName))
+                    if (lightMachine.Equals(myName))
                     {
-                        ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),new BasicHttpBinding(), new EndpointAddress(machines[busyMachine].uri));
+                        Uri uri = FindBackupOfSeller(primaryToTransfer, machinesOldView);
+                        ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),new BasicHttpBinding(), new EndpointAddress(uri));
                         using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                         {
                             ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                             Seller sellerToPrimary = sellerCluster.sendBackupSeller(primaryToTransfer);
-                            if (sellerToPrimary == null)
-                                sellerToPrimary = sellerCluster.sendPrimarySeller(primaryToTransfer);
                             primaries.Add(sellerToPrimary);
                         }
                     }
+                    primariesToAssign.Remove(primaryToTransfer);
                 }
             }
 
             List<string> idles = getTheMostBusyMachineOrderByBackups(machines);
             idles.Reverse();
             backupsToAssign.Sort();
-            foreach (string backupToAssign in backupsToAssign)
+
+
+            foreach (string lightMachine in idles)
             {
-                foreach (string idleMachine in idles)
+                if (backupsToAssign.Count == 0) break;
+
+
+                while (machines[lightMachine].backsUp.Count < averageB)
                 {
-                    if (/*machines[idleMachine].backsUp.Count < averageB+1 && */!machines[idleMachine].primaryOf.Contains(backupToAssign))
+                    if (backupsToAssign.Except(machines[lightMachine].primaryOf).Count() == 0) break;
+                    List<string> bs = backupsToAssign.Except(machines[lightMachine].primaryOf).ToList();
+                    bs.Sort();
+                    string backupToTransfer = bs.First();
+                    machines[lightMachine].backsUp.Add(backupToTransfer);
+
+                    if (lightMachine.Equals(myName))
                     {
-                        machines[idleMachine].backsUp.Add(backupToAssign);
-                        if (idleMachine.Equals(myName))
+                        if (backupsThatShouldBeMoved.Contains(backupToTransfer))
                         {
-                            Uri uri = FindPrimaryOfSeller(backupToAssign);
+                            Uri uri = FindBackupOfSeller(backupToTransfer, machinesOldView);
                             ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(uri));
                             using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                             {
-                                
+                                Seller sellerToPrimary;
                                 ISellerClusterService sellerCluster = httpFactory.CreateChannel();
-                                Seller sellerToBackup = sellerCluster.sendPrimarySeller(backupToAssign);
-                                if (sellerToBackup == null) sellerCluster.sendBackupSeller(backupToAssign);
-                                backups.Add(sellerToBackup);
+                                sellerToPrimary = sellerCluster.sendBackupSeller(backupToTransfer);
+                                backups.Add(sellerToPrimary);
                             }
+
+
                         }
-                        break;
+                        else
+                        {
+                            Uri uri = FindPrimaryOfSeller(backupToTransfer, machinesOldView);
+                            ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(uri));
+                            using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                            {
+                                Seller sellerToPrimary;
+                                ISellerClusterService sellerCluster = httpFactory.CreateChannel();
+                                sellerToPrimary = sellerCluster.sendPrimarySeller(backupToTransfer);
+                                backups.Add(sellerToPrimary);
+                            }
+
+
+
+                        }
+
                     }
+                    backupsToAssign.Remove(backupToTransfer);
                 }
             }
 
         }
-        private Uri FindPrimaryOfSeller(string sellerName){
-            Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
-            foreach (string machineName in machines.Keys)
-            {
-                if (machines[machineName].primaryOf.Contains(sellerName) && !machineName.Equals(myName))
-                {
-                    
-                    return machines[machineName].uri;
-                }
-            }
-            return null;
+        private Uri FindPrimaryOfSeller(string sellerName,Dictionary<string, ZNodesDataStructures.MachineNode> machines){
+            return (from m in machines where m.Value.primaryOf.Contains(sellerName) select m.Value.uri).First();
+        }
+
+        private Uri FindBackupOfSeller(string sellerName, Dictionary<string, ZNodesDataStructures.MachineNode> machines)
+        {
+            return (from m in machines where m.Value.backsUp.Contains(sellerName) select m.Value.uri).First();
         }
         public void respondIfSomeoneLeft(List<String> sellersWhoLostPrimary, List<String> sellersWhoLostBackup)
         {
@@ -534,35 +560,13 @@ namespace AirlineServer
 
             // get the updated snapshot
             Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
+            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = copyMachines(machines);
 
-            // if a primary seller fall - raise the backup immediately
-
-
-            setMachineAsPrimary(sellersWhoLostPrimary);
-
-
-
-            // Update it in the ZK tree
-            foreach (string m in machines.Keys)
-            {
-                foreach (string seller in machines[m].backsUp)
-                {
-                    if (sellersWhoLostPrimary.Contains(seller))
-                    {
-                        machines[m].primaryOf.Add(seller);
-
-                    }
-                }
-
-                machines[m].backsUp.RemoveAll(delegate(string s) { return sellersWhoLostPrimary.Contains(s); });
-            }
-
-            // relevant only if there are more than 1 machine
-            if (machines.Count > 0)
-            {
+                Console.WriteLine("\t** BALANCING ALGORITHM STARTED **");
                 // execute a deterministic load-balancing algorithm - and also fill the machines with backup nodes 
-                balanceTheTreeAfterLeft(machines, sellersWhoLostPrimary.Concat(sellersWhoLostBackup).ToList());
-            }
+                balanceTheTreeAfterLeft(machines,machinesOldVersion,sellersWhoLostBackup,sellersWhoLostPrimary);
+                Console.WriteLine("\t** BALANCING ALGORITHM FINISHED **");
+
 
             //Barrier
             barrier.Leave();
@@ -573,18 +577,8 @@ namespace AirlineServer
 
             backups.RemoveAll(delegate(Seller s) { return !machines[myName].backsUp.Contains(s.name); });
 
-
+            print(machines);
         }
-
-        private void setMachineAsPrimary(List<string> sellerNames)
-        {
-                      // Update it in the ZK tree
-            foreach (Seller m in backups)
-            {
-                if (sellerNames.Contains(m.name)) primaries.Add(m);
-            }
-        }
-
 
         public List<Flight> getRelevantFlightsBySrc(string src, DateTime date, List<string> sellersToSearch)
         {
@@ -639,31 +633,23 @@ namespace AirlineServer
 
         public Seller sendPrimarySeller(string sellerName)
         {
-            foreach (Seller p in primaries)
-            {
-                if (p.name.Equals(sellerName)) { return p; }
-            }
-            return null;
+            return primaries.Where(delegate(Seller s) { return s.name.Equals(sellerName); }).First();
         }
 
         public Seller sendBackupSeller(string sellerName)
         {
-            foreach (Seller p in backups)
-            {
-                if (p.name.Equals(sellerName)) { return p; }
-            }
-            return null;
+            return backups.Where(delegate(Seller s) { return s.name.Equals(sellerName); }).First();
         }
 
         public void print(Dictionary<string, ZNodesDataStructures.MachineNode> machines)
         {
-            Console.WriteLine("my primaries: ");
+            Console.Write("my primaries: ");
             foreach (Seller s in primaries)
             {
                 Console.Write(s.name+", ");
             }
             Console.WriteLine();
-            Console.WriteLine("my backups: ");
+            Console.Write("my backups: ");
             foreach (Seller s in backups)
             {
                 Console.Write(s.name + ", ");

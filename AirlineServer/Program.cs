@@ -169,7 +169,7 @@ namespace AirlineServer
                         ExOpBehavior cacheBehavior = new ExOpBehavior(cache);
                         foreach (OperationDescription description in sellerEndPoint.Contract.Operations)
                         {
-                            if (description.Name.Equals("query"))
+                            if (description.Name.Equals("getTrips"))
                                 description.Behaviors.Add(cacheBehavior);
                         }
 
