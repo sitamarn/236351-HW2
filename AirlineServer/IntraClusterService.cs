@@ -58,7 +58,7 @@ namespace AirlineServer
             
         }
 
-        public void respondIfNewNode(String machineName, String sellerName, Uri machine )
+        public void respondIfNewNode(String machineName, String sellerName, Uri machine)
         {
             // Clear the cache because the system changed -> the data changed
             cache.clear();
@@ -69,18 +69,19 @@ namespace AirlineServer
             // Get the cuurent snapshot of the system - including the new machine that came up!
             //not included the sellers that it holds.
             Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
-            
+
             // in the ZK tree: If a machine holds a seller that has return to live - drop it!
-            foreach(string smachine in machines.Keys){
+            foreach (string smachine in machines.Keys)
+            {
                 if (!smachine.Equals(machineName))
                 {
-                machines[smachine].primaryOf.Remove(sellerName);
-                machines[smachine].backsUp.Remove(sellerName);  
+                    machines[smachine].primaryOf.Remove(sellerName);
+                    machines[smachine].backsUp.Remove(sellerName);
                 }
             }
 
             // this is the oldest legal view of the tree. necessary to enable sellers transfers
-            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = copyMachines(machines);
+            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = new Dictionary<string, ZNodesDataStructures.MachineNode>(machines);
 
             // in the local data: If a this machine holds an old version of the seller - drop it!!
             if (!machineName.Equals(myName))
@@ -152,39 +153,25 @@ namespace AirlineServer
                         machines[machineName].backsUp.Add(sell);
                         if (machineName.Equals(myName))
                         {
-                            try
+                            ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(machines[oldMachine].uri));
+                            using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                             {
-                                ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(machines[oldMachine].uri));
-                                using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                                ISellerClusterService sellerCluster = httpFactory.CreateChannel();
+                                try
                                 {
-                                    ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                                     Seller sellerToBackup = sellerCluster.sendPrimarySeller(sell);
                                     if (sellerToBackup == null)
                                     {
                                         sellerToBackup = sellerCluster.sendBackupSeller(sellerName);
                                     }
                                     backups.Add(sellerToBackup);
-
                                 }
-                            }
-                            catch (ProtocolException e)
-                            {
-                                Console.WriteLine("Bad Protocol: " + e.Message);
-                            }
-                            catch (Exception e)
-                            {
-
-                                if (e.InnerException is WebException)
+                                catch (FaultException fe)
                                 {
-                                    HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
-                                    Console.WriteLine("Failed, {0}", resp.StatusDescription);
+                                    Console.WriteLine("Failure in getting seller. Because: " + fe.Message);
+                                    return;
                                 }
-                                else
-                                {
-                                    Console.WriteLine("Advertisement connection kicked the bucket, quitting because:");
-                                    Console.WriteLine(e.Message.ToString());
-                                }
-                                return;
+
                             }
                         }
 
@@ -199,41 +186,29 @@ namespace AirlineServer
                 {
 
                     Uri uri = machine;
-                    try
+
+                    ServiceEndpoint endPoint = new ServiceEndpoint(
+                        ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(machines[machineName].uri));
+                    using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                     {
-                        ServiceEndpoint endPoint = new ServiceEndpoint(
-                            ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(machines[machineName].uri));
-                        using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                        ISellerClusterService sellerCluster = httpFactory.CreateChannel();
+                        try
                         {
-                            ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                             Seller sellerToBackup = sellerCluster.sendPrimarySeller(sellerName);
                             if (sellerToBackup == null)
                             {
                                 sellerToBackup = sellerCluster.sendBackupSeller(sellerName);
                             }
                             backups.Add(sellerToBackup);
-
                         }
-                    }
-                    catch (ProtocolException e)
-                    {
-                        Console.WriteLine("Bad Protocol: " + e.Message);
-                    }
-                    catch (Exception e)
-                    {
-
-                        if (e.InnerException is WebException)
+                        catch (FaultException fe)
                         {
-                            HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
-                            Console.WriteLine("Failed, {0}", resp.StatusDescription);
+                            Console.WriteLine("Failure in getting seller. Because: " + fe.Message);
+                            return;
                         }
-                        else
-                        {
-                            Console.WriteLine("Advertisement connection kicked the bucket, quitting because:");
-                            Console.WriteLine(e.Message.ToString());
-                        }
-                        return;
+
                     }
+
                 }
                 // update it in the ZK tree
                 machines[victim].backsUp.Add(sellerName);
@@ -251,19 +226,19 @@ namespace AirlineServer
             }
 
 
+
+
+            //// barrier: in order to prevent losing replicas at same time that other machines asks for them
             barrier.Leave();
+            // update the ZK server!!
+            AirlineReplicationModule.Instance.updateMachineData(machines);
 
-                //// barrier: in order to prevent losing replicas at same time that other machines asks for them
+            // update the primaries and backups lists - now we can remove the not needed replicas
+            primaries.RemoveAll(delegate(Seller p) { return !machines[myName].primaryOf.Contains(p.name); });
+            backups.RemoveAll(delegate(Seller p) { return !machines[myName].backsUp.Contains(p.name); });
 
-                // update the ZK server!!
-                AirlineReplicationModule.Instance.updateMachineData(machines);
-
-                // update the primaries and backups lists - now we can remove the not needed replicas
-                primaries.RemoveAll(delegate(Seller p) { return !machines[myName].primaryOf.Contains(p.name);});
-                backups.RemoveAll(delegate(Seller p) { return !machines[myName].backsUp.Contains(p.name);  });
-
-                // print replicas status
-                print(machines);
+            // print replicas status
+            print(machines);
         }
 
         private void balanceTheTreeAfterJoined(Dictionary<string, ZNodesDataStructures.MachineNode> machines, Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion, string joinedMachine, Uri machine)
@@ -280,10 +255,12 @@ namespace AirlineServer
             averageB = Convert.ToInt32(Math.Ceiling(Convert.ToDecimal(averageB) / machines.Count));
 
             // this phase handle the primary replicas of sellers in each machine:
-            foreach(string busyMachine in getTheMostBusyMachineOrderByPrimaries(machines)){
-                
+            foreach (string busyMachine in getTheMostBusyMachineOrderByPrimaries(machines))
+            {
+
                 //if the machine has too many primaries
-                while(machines[busyMachine].primaryOf.Count >  averageP){
+                while (machines[busyMachine].primaryOf.Count > averageP)
+                {
 
                     // choose a seller in a deterministic way and pass it on
                     machines[busyMachine].primaryOf.Sort();
@@ -294,38 +271,24 @@ namespace AirlineServer
                     machines[joinedMachine].primaryOf.Add(primaryToTransfer);
 
                     // if this machine is the new joined machine - follow the order
-                    if(joinedMachine.Equals(myName)){
+                    if (joinedMachine.Equals(myName))
+                    {
                         Uri uri = FindPrimaryOfSeller(primaryToTransfer, machinesOldVersion);
-                        try
+                        ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),
+                                                      new BasicHttpBinding(), new EndpointAddress(uri));
+                        using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                         {
-                            ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),
-                                new BasicHttpBinding(), new EndpointAddress(uri));
-                            using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                            try
                             {
                                 ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                                 Seller sellerToPrimary = sellerCluster.sendPrimarySeller(primaryToTransfer);
-                                
                                 primaries.Add(sellerToPrimary);
                             }
-                        }
-                        catch (ProtocolException e)
-                        {
-                            Console.WriteLine("Bad Protocol: " + e.Message);
-                        }
-                        catch (Exception e)
-                        {
-
-                            if (e.InnerException is WebException)
+                            catch (FaultException fe)
                             {
-                                HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
-                                Console.WriteLine("Failed, {0}", resp.StatusDescription);
+                                Console.WriteLine("Failure in getting seller. Because: " + fe.Message);
+                                return;
                             }
-                            else
-                            {
-                                Console.WriteLine("Advertisement connection kicked the bucket, quitting because:{0},{1}", primaryToTransfer, uri.AbsoluteUri);
-                                Console.WriteLine(e.Message.ToString());
-                            }
-                            return;
                         }
                     }
                 }
@@ -335,8 +298,10 @@ namespace AirlineServer
             // this phase works the same as the above BUT there is 1 constrain.
             string lightMachine = getTheMostBusyMachineOrderByBackups(machines).Last();
 
-            foreach(string busyMachine in getTheMostBusyMachineOrderByBackups(machines)){
-                while(machines[busyMachine].backsUp.Count >  averageB){
+            foreach (string busyMachine in getTheMostBusyMachineOrderByBackups(machines))
+            {
+                while (machines[busyMachine].backsUp.Count > averageB)
+                {
 
                     // sort the backups in  a deterministic (stable) way - but thow out
                     // the sellers that the new machine owns as primary
@@ -351,42 +316,29 @@ namespace AirlineServer
                     machines[lightMachine].backsUp.Add(BackupToTransfer);
                     if (lightMachine.Equals(myName))
                     {
-                        try
+
+                        Uri uri = FindPrimaryOfSeller(BackupToTransfer, machinesOldVersion);
+                        ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),
+                            new BasicHttpBinding(), new EndpointAddress(uri));
+                        using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                         {
-                            Uri uri = FindPrimaryOfSeller(BackupToTransfer, machinesOldVersion);
-                            ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),
-                                new BasicHttpBinding(), new EndpointAddress(uri));
-                            using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
+                            try
                             {
                                 ISellerClusterService sellerCluster = httpFactory.CreateChannel();
                                 Seller sellerToBackup = sellerCluster.sendPrimarySeller(BackupToTransfer);
                                 backups.Add(sellerToBackup);
                             }
-                        }
-                        catch (ProtocolException e)
-                        {
-                            Console.WriteLine("Bad Protocol: " + e.Message);
-
-                        }
-                        catch (Exception e)
-                        {
-
-                            if (e.InnerException is WebException)
+                            catch (FaultException fe)
                             {
-                                HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
-                                Console.WriteLine("Failed, {0}", resp.StatusDescription);
+                                Console.WriteLine("Failure in getting seller. Because: " + fe.Message);
+                                return;
                             }
-                            else
-                            {
-                                Console.WriteLine("Advertisement connection kicked the bucket, quitting because111:");
-                                Console.WriteLine(e.Message.ToString());
-                            }
-                            return;
                         }
                     }
                 }
             }
         }
+        /*
         private Dictionary<string, ZNodesDataStructures.MachineNode> copyMachines(Dictionary<string, ZNodesDataStructures.MachineNode> machines)
         {
             Dictionary<string, ZNodesDataStructures.MachineNode> machinesClone = new Dictionary<string, ZNodesDataStructures.MachineNode>();
@@ -398,12 +350,11 @@ namespace AirlineServer
                 machinesClone[name].primaryOf = new List<string>(machines[name].primaryOf);
             }
             return machinesClone;
+        }*/
 
-
-        }
-        private void balanceTheTreeAfterLeft(Dictionary<string, ZNodesDataStructures.MachineNode> machines,Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldView, List<string> backupsToAssign, List<string> primariesToAssign)
+        private void balanceTheTreeAfterLeft(Dictionary<string, ZNodesDataStructures.MachineNode> machines, Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldView, List<string> backupsToAssign, List<string> primariesToAssign)
         {
-            
+
             // calculate the average number of sellers (separately primaries and backups)
             // that each machine has to hold approximately in order to keep load balancing
             int averageP = 0, averageB = 0;
@@ -423,44 +374,60 @@ namespace AirlineServer
             List<string> backupsThatShouldBeMoved = new List<string>();
             foreach (string lightMachine in reverseBusy)
             {
+                // no primaries to assign
                 if (primariesToAssign.Count == 0) break;
 
-
+                // move primaries to the light machine
                 while (machines[lightMachine].primaryOf.Count < averageP)
                 {
                     if (primariesToAssign.Count == 0) break;
+
+                    // do the transfer
                     string primaryToTransfer = primariesToAssign.First();
                     machines[lightMachine].primaryOf.Add(primaryToTransfer);
-                    if(machines[lightMachine].backsUp.Contains(primaryToTransfer)){
+                    if (machines[lightMachine].backsUp.Contains(primaryToTransfer))
+                    {
                         machines[lightMachine].backsUp.Remove(primaryToTransfer);
                         backupsToAssign.Add(primaryToTransfer);
                         backupsThatShouldBeMoved.Add(primaryToTransfer);
                     }
+
+                    // ask for the seller from another machine
                     if (lightMachine.Equals(myName))
                     {
+
                         Uri uri = FindBackupOfSeller(primaryToTransfer, machinesOldView);
-                        ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)),new BasicHttpBinding(), new EndpointAddress(uri));
+                        ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(uri));
                         using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                         {
-                            ISellerClusterService sellerCluster = httpFactory.CreateChannel();
-                            Seller sellerToPrimary = sellerCluster.sendBackupSeller(primaryToTransfer);
-                            primaries.Add(sellerToPrimary);
+                            try
+                            {
+                                ISellerClusterService sellerCluster = httpFactory.CreateChannel();
+                                Seller sellerToPrimary = sellerCluster.sendBackupSeller(primaryToTransfer);
+                                primaries.Add(sellerToPrimary);
+                            }
+                            catch (FaultException fe)
+                            {
+                                Console.WriteLine("Failure in getting seller. Because: " + fe.Message);
+                                return;
+                            }
                         }
                     }
                     primariesToAssign.Remove(primaryToTransfer);
                 }
             }
 
+            // this phase load balance the backup
             List<string> idles = getTheMostBusyMachineOrderByBackups(machines);
             idles.Reverse();
             backupsToAssign.Sort();
 
-
+            // balance the machines order by backups
             foreach (string lightMachine in idles)
             {
                 if (backupsToAssign.Count == 0) break;
 
-
+                // move until machine get to the average amount of backups
                 while (machines[lightMachine].backsUp.Count < averageB)
                 {
                     if (backupsToAssign.Except(machines[lightMachine].primaryOf).Count() == 0) break;
@@ -469,6 +436,8 @@ namespace AirlineServer
                     string backupToTransfer = bs.First();
                     machines[lightMachine].backsUp.Add(backupToTransfer);
 
+                    // we distinct between 2 cases: backups that have been removed from another machine, and backups that
+                    // came from the dropped machine
                     if (lightMachine.Equals(myName))
                     {
                         if (backupsThatShouldBeMoved.Contains(backupToTransfer))
@@ -477,13 +446,19 @@ namespace AirlineServer
                             ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(uri));
                             using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                             {
-                                Seller sellerToPrimary;
-                                ISellerClusterService sellerCluster = httpFactory.CreateChannel();
-                                sellerToPrimary = sellerCluster.sendBackupSeller(backupToTransfer);
-                                backups.Add(sellerToPrimary);
+                                try
+                                {
+                                    Seller sellerToPrimary;
+                                    ISellerClusterService sellerCluster = httpFactory.CreateChannel();
+                                    sellerToPrimary = sellerCluster.sendBackupSeller(backupToTransfer);
+                                    backups.Add(sellerToPrimary);
+                                }
+                                catch (FaultException fe)
+                                {
+                                    Console.WriteLine("Failure in getting seller. Because: " + fe.Message);
+                                    return;
+                                }
                             }
-
-
                         }
                         else
                         {
@@ -491,23 +466,28 @@ namespace AirlineServer
                             ServiceEndpoint endPoint = new ServiceEndpoint(ContractDescription.GetContract(typeof(ISellerClusterService)), new BasicHttpBinding(), new EndpointAddress(uri));
                             using (ChannelFactory<ISellerClusterService> httpFactory = new ChannelFactory<ISellerClusterService>(endPoint))
                             {
-                                Seller sellerToPrimary;
-                                ISellerClusterService sellerCluster = httpFactory.CreateChannel();
-                                sellerToPrimary = sellerCluster.sendPrimarySeller(backupToTransfer);
-                                backups.Add(sellerToPrimary);
+                                try
+                                {
+                                    Seller sellerToPrimary;
+                                    ISellerClusterService sellerCluster = httpFactory.CreateChannel();
+                                    sellerToPrimary = sellerCluster.sendPrimarySeller(backupToTransfer);
+                                    backups.Add(sellerToPrimary);
+                                }
+                                catch (FaultException fe)
+                                {
+                                    Console.WriteLine("Failure in getting seller. Because: " + fe.Message);
+                                    return;
+                                }
                             }
-
-
-
                         }
-
                     }
                     backupsToAssign.Remove(backupToTransfer);
                 }
             }
 
         }
-        private Uri FindPrimaryOfSeller(string sellerName,Dictionary<string, ZNodesDataStructures.MachineNode> machines){
+        private Uri FindPrimaryOfSeller(string sellerName,Dictionary<string, ZNodesDataStructures.MachineNode> machines)
+        {
             return (from m in machines where m.Value.primaryOf.Contains(sellerName) select m.Value.uri).First();
         }
 
@@ -560,12 +540,12 @@ namespace AirlineServer
 
             // get the updated snapshot
             Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
-            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = copyMachines(machines);
+            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = new Dictionary<string, ZNodesDataStructures.MachineNode>(machines);
 
-                Console.WriteLine("\t** BALANCING ALGORITHM STARTED **");
-                // execute a deterministic load-balancing algorithm - and also fill the machines with backup nodes 
-                balanceTheTreeAfterLeft(machines,machinesOldVersion,sellersWhoLostBackup,sellersWhoLostPrimary);
-                Console.WriteLine("\t** BALANCING ALGORITHM FINISHED **");
+            Console.WriteLine("\t** BALANCING ALGORITHM STARTED **");
+            // execute a deterministic load-balancing algorithm - and also fill the machines with backup nodes 
+            balanceTheTreeAfterLeft(machines, machinesOldVersion, sellersWhoLostBackup, sellersWhoLostPrimary);
+            Console.WriteLine("\t** BALANCING ALGORITHM FINISHED **");
 
 
             //Barrier

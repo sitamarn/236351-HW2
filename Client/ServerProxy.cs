@@ -93,18 +93,23 @@ namespace Client
                     {
                         Console.WriteLine("Invalid time format, use dd/MM/yyyy format");
                     }
+                    catch (EndpointNotFoundException e)
+                    {
+                        Console.WriteLine("search service in the FlightSearchServer is down: "+e.Message);
+                    }
                     catch (Exception e)
                     {
                         if (e.InnerException is WebException)
                         {
                             HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
-                            Console.WriteLine("Failed, {0}", resp.StatusDescription);
+                            Console.WriteLine("service responded with " + "code: {0}, description: {1}", resp.StatusCode, resp.StatusDescription);
+
                         }
                         else
                         {
-                            throw e;
+                            Console.WriteLine("search server failed:");
+                            Console.WriteLine(e.Message.ToString());
                         }
-
                     }
                 }
             } while (true);
@@ -123,26 +128,29 @@ namespace Client
                 string dst = input[2];
                 string strDate = input[3];
 
-                String airServers="";
+                String airServers = "";
 
-                for (int i = 3; i < input.Length; i++)
+                for (int i = 4; i < input.Length; i++)
                 {
                     airServers += (input[i] + ",");
                 }
-                airServers = airServers.Remove(airServers.Length - 1);
-
+                if (!airServers.Equals(""))
+                {
+                    airServers = airServers.Remove(airServers.Length - 1);
+                }
+                QueryResultTrips result = null;
                 GetDate(strDate);
 
-                QueryResultTrips result = channel.GetFlights(src, dst, strDate, airServers);
-                
+                result = channel.GetFlights(src, dst, strDate, airServers);
+
                 foreach (QueryResultTrip trip in result)
                 {
-                    Console.WriteLine("{0}$: ", trip.price);
+                    Console.Write("{0}$: ", trip.price);
 
-                    Console.Write("{0}-{1} ({2}, {3}), ", trip.firstFlight.src, trip.firstFlight.dst, trip.firstFlight.seller, trip.firstFlight.flightNumber);
+                    Console.Write("{0}-{1} ({2}, {3})", trip.firstFlight.src, trip.firstFlight.dst, trip.firstFlight.seller, trip.firstFlight.flightNumber);
                     if (trip.secondFlight != null)
                     {
-                        Console.Write("{0}-{1} ({2}, {3}), ", trip.firstFlight.src, trip.firstFlight.dst, trip.firstFlight.seller, trip.firstFlight.flightNumber);
+                        Console.Write(", {0}-{1} ({2}, {3})", trip.firstFlight.src, trip.firstFlight.dst, trip.firstFlight.seller, trip.firstFlight.flightNumber);
                     }
                     Console.WriteLine();
                 }

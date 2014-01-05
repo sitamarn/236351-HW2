@@ -53,7 +53,7 @@ namespace FlightSearchServer
         /// Publishing mechanism to allow clients dynamically make search queries to all registered 
         /// sellers
         /// </summary>
-        private ServiceHost cqsHost;
+        private WebServiceHost cqsHost;
 
         /// <summary>
         /// Boolean variable to indicate if the singleton was initialized
@@ -70,9 +70,9 @@ namespace FlightSearchServer
         public void Initialize(string clientPort, string sellerPort, string logFileName)
         {
             tsrHost = new WebServiceHost(typeof(AirSellerRegisteration), new Uri(@"http://localhost:" + sellerPort + @"/Services/FlightsSearchReg"));
-            cqsHost = new ServiceHost(typeof(ClientQueryService), new Uri(@"http://localhost:" + clientPort + @"/Services/FlightsSearch"));
-            //ServiceEndpoint sellerEndPoint = sellerHost.AddServiceEndpoint(typeof(ISellerService), new BasicHttpBinding(), sellerAddress);
-            ServiceEndpoint sellerEndPoint = cqsHost.AddServiceEndpoint(typeof(IClientQueryService), new BasicHttpBinding(), "FlightSearchServer.ClientQueryService");
+            cqsHost = new WebServiceHost(typeof(ClientQueryService), new Uri(@"http://localhost:" + clientPort + @"/Services"));
+           // ServiceEndpoint regEndPoint = tsrHost.AddServiceEndpoint(typeof(IAirSellerRegisteration), new WebHttpBinding(), @"http://localhost:" + sellerPort + @"/Services/FlightsSearchReg");
+            ServiceEndpoint sellerEndPoint = cqsHost.AddServiceEndpoint(typeof(IClientQueryService), new WebHttpBinding(), @"http://localhost:" + clientPort + @"/Services/FlightsSearch");
 
             ExOpBehavior logBehavior = new ExOpBehavior(logFileName);
             foreach (OperationDescription description in sellerEndPoint.Contract.Operations)
@@ -80,7 +80,6 @@ namespace FlightSearchServer
                 if (description.Name.Equals("GetFlights"))
                     description.Behaviors.Add(logBehavior);
             }
-
             isInitialized = true;
         }
 
@@ -104,6 +103,21 @@ namespace FlightSearchServer
                     tsrHost.Close();
                 if (cqsHost != null)
                     cqsHost.Close();
+            }
+        }
+
+        public void dispose()
+        {
+            try
+            {
+                if (tsrHost != null)
+                    tsrHost.Close();
+                if (cqsHost != null)
+                    cqsHost.Close();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Cant dispose services: " + e.Message);
             }
         }
 
@@ -133,6 +147,15 @@ namespace FlightSearchServer
 
             QueryResultTrips queryTrips = new QueryResultTrips();
 
+            if (delegates.Count == 0)
+            {
+                string errMsg = ("no delegate is available");
+                errMsg += ("the system waits for a new delegate registeration");
+                errMsg += ("try again later...");
+                WebOperationContext.Current.OutgoingResponse.SetStatusAsNotFound(errMsg);
+                return null;
+            }
+
             foreach (ISellerService delegateMachine in delegates.Values)
             {
                 Trip[] trips = null;
@@ -140,24 +163,10 @@ namespace FlightSearchServer
                 {
                     trips = delegateMachine.getTrips(src, dst, dateOfFlight, companesArr);
                 }
-                catch (ProtocolException e)
-                {
-                    Console.WriteLine("Bad Protocol: " + e.Message);
-                }
-                catch (Exception e)
-                {
 
-                    if (e.InnerException is WebException)
-                    {
-                        HttpWebResponse resp = (HttpWebResponse)((WebException)e.InnerException).Response;
-                        Console.WriteLine("Failed, {0}", resp.StatusDescription);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Advertisement connection kicked the bucket, quitting because:");
-                        Console.WriteLine(e.Message.ToString());
-                    }
-                    return null;
+                catch (FaultException e)
+                {
+                    Console.WriteLine("a delegate machine is not available: "+e.Message);
                 }
                 foreach (Trip trip in trips)
                 {
@@ -188,9 +197,9 @@ namespace FlightSearchServer
                     queryTrips.Add(queryTrip);
                 }
             }
-            //var a = ;
+            // remove duplicates
             queryTrips = new QueryResultTrips(queryTrips.ToList().Distinct(new QueryResultsTripComparer()).ToList());
-            //HashSet<QueryResultFlight> hashset = new HashSet<QueryResultFlight>(queryTrips.ToList());
+            // sort as requested
             queryTrips.Sort();
 
             return queryTrips;

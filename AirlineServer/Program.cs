@@ -129,12 +129,7 @@ namespace AirlineServer
                 return;
             }
 
-            // TODO: remove this
             String ip = "localhost";
-            if (args[5].StartsWith(@"c:\"))
-            {
-                ip = "192.168.0.1";
-            }
 
             // Read arguments
             string intraClusterAddress = @"http://"+ip+":" + args[3] + @"/IntraClusterService";
@@ -185,6 +180,10 @@ namespace AirlineServer
 
                         // Keeping the service alive till pressing ENTER
                         Console.ReadKey();
+
+                        // time to say goodbye
+                        sellerHost.Close();
+                        intraHost.Close();
                    }
                 }
             }

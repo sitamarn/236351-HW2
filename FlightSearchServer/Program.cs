@@ -34,6 +34,7 @@ namespace FlightSearchServer
                 fss.run(); // wait till death
 
                 Console.ReadKey();
+                fss.dispose();
             }
             catch (Exception e)
             {
