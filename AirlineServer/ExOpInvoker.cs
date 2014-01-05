@@ -30,9 +30,10 @@ namespace AirlineServer
             outputs[0] = new object();
 
             string key = inputs[0] + " " + inputs[1] + " " + (DateTime)inputs[2];
-            for (int i = 3; i < inputs.Length; i++)
+            List<string> companies = (List<string>)inputs[3];
+            for (int i = 0; i < companies.Count; i++)
             {
-                key += " " + inputs[i];
+                key += " " + companies[i];
             }
             Object result = cache.getDataFromCache(key);
 
