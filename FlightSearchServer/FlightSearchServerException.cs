@@ -11,8 +11,8 @@ namespace FlightSearchServer
     [Serializable]
     public class FlightSearchServerException : Exception
     {
-        public HttpStatusCode StatusCode = HttpStatusCode.NotFound; /* Legacy */
-        public string StatusDescription = "request was not found**";
+        public HttpStatusCode StatusCode = HttpStatusCode.ServiceUnavailable; /* Legacy */
+        public string StatusDescription = "service unavailable**";
 
         public FlightSearchServerException()
             : base() { }
