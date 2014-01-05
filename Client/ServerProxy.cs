@@ -150,7 +150,7 @@ namespace Client
                     Console.Write("{0}-{1} ({2}, {3})", trip.firstFlight.src, trip.firstFlight.dst, trip.firstFlight.seller, trip.firstFlight.flightNumber);
                     if (trip.secondFlight != null)
                     {
-                        Console.Write(", {0}-{1} ({2}, {3})", trip.firstFlight.src, trip.firstFlight.dst, trip.firstFlight.seller, trip.firstFlight.flightNumber);
+                        Console.Write(", {0}-{1} ({2}, {3})", trip.secondFlight.src, trip.secondFlight.dst, trip.secondFlight.seller, trip.secondFlight.flightNumber);
                     }
                     Console.WriteLine();
                 }

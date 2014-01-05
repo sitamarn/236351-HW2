@@ -30,7 +30,7 @@ namespace TreeViewLib
         public static readonly string MACHINES_NODE = "machines";
         public static readonly string SELLERS_NODE = "sellers";
         public static readonly string BARRIER_NODE = "__barrier__";
-        public static readonly int SECONDS_TIMEOUT = 120000;
+        public static readonly int SECONDS_TIMEOUT = 5000;
         public static readonly int ZK_RETRIES = 5;
 
         private string clusterName;

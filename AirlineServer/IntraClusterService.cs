@@ -81,7 +81,7 @@ namespace AirlineServer
             }
 
             // this is the oldest legal view of the tree. necessary to enable sellers transfers
-            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = new Dictionary<string, ZNodesDataStructures.MachineNode>(machines);
+            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = copyMachines(machines);
 
             // in the local data: If a this machine holds an old version of the seller - drop it!!
             if (!machineName.Equals(myName))
@@ -338,7 +338,7 @@ namespace AirlineServer
                 }
             }
         }
-        /*
+        
         private Dictionary<string, ZNodesDataStructures.MachineNode> copyMachines(Dictionary<string, ZNodesDataStructures.MachineNode> machines)
         {
             Dictionary<string, ZNodesDataStructures.MachineNode> machinesClone = new Dictionary<string, ZNodesDataStructures.MachineNode>();
@@ -350,7 +350,7 @@ namespace AirlineServer
                 machinesClone[name].primaryOf = new List<string>(machines[name].primaryOf);
             }
             return machinesClone;
-        }*/
+        }
 
         private void balanceTheTreeAfterLeft(Dictionary<string, ZNodesDataStructures.MachineNode> machines, Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldView, List<string> backupsToAssign, List<string> primariesToAssign)
         {
@@ -540,7 +540,7 @@ namespace AirlineServer
 
             // get the updated snapshot
             Dictionary<string, ZNodesDataStructures.MachineNode> machines = AirlineReplicationModule.Instance.Machines;
-            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = new Dictionary<string, ZNodesDataStructures.MachineNode>(machines);
+            Dictionary<string, ZNodesDataStructures.MachineNode> machinesOldVersion = copyMachines(machines);
 
             Console.WriteLine("\t** BALANCING ALGORITHM STARTED **");
             // execute a deterministic load-balancing algorithm - and also fill the machines with backup nodes 
