@@ -1,0 +1,3 @@
+FlightSearchServer.exe 8000 8100 log.txt
+
+AirlineServer.exe NIGGER SkyTeam 8200 8201 localhost:8100/Services/FlightsSearchReg c:\a.txt
